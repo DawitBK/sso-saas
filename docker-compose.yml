@@ -1,0 +1,82 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sso-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in backend/.env.production and pass it with --env-file backend/.env.production}
+      POSTGRES_DB: ${DB_NAME:-idpprod}
+    ports:
+      - "5435:5432" # Mapped off the default port to avoid local conflicts
+    volumes:
+      - sso_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sso-backend
+    init: true
+    restart: always
+    ports:
+      - "${BACKEND_HOST_PORT:-7300}:${PORT:-7300}"
+      # Gateway (gateway/server.ts) — same-origin GMS SSO handoff, a separate
+      # Express app inside this same process/container, not a second service.
+      - "${GATEWAY_HOST_PORT:-4200}:${GATEWAY_PORT:-4200}"
+    env_file:
+      - ./backend/.env.production
+    environment:
+      # DATABASE_URL in .env.production points at 127.0.0.1 for a native
+      # deploy; override the host to the postgres container here so a plain
+      # `docker compose up` on this file alone (no platform-level override)
+      # still works standalone.
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-idpprod}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "http=require('http');req=http.get('http://127.0.0.1:7300/health',res=>process.exit(res.statusCode===200?0:1));req.on('error',()=>process.exit(1));"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-/sso}
+    container_name: sso-frontend
+    init: true
+    restart: always
+    ports:
+      - "${FRONTEND_HOST_PORT:-7301}:7301"
+    env_file:
+      - ./frontend/.env.production
+    environment:
+      PORT: "7301"
+      SSO_BACKEND_URL: http://backend:7300
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "http=require('http');req=http.get('http://127.0.0.1:7301/',res=>process.exit(res.statusCode<500?0:1));req.on('error',()=>process.exit(1));"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+# Run standalone with: docker compose --env-file backend/.env.production up -d --build
+# For the full platform (GMS + DMS + SSO behind one nginx reverse proxy), see
+# /docker-compose.platform.yml at the repo root instead — it builds this same
+# backend/frontend and wires DATABASE_URL / cross-app URLs to container names.
+
+volumes:
+  sso_pgdata:

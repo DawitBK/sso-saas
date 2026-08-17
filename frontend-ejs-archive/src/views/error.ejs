@@ -1,0 +1,5 @@
+<%- include('head', { title: 'Error' }) %>
+  <h2>Something went wrong</h2>
+  <p class="sub"><%= message %></p>
+  <% if (typeof detail !== 'undefined' && detail) { %><div class="error"><%= detail %></div><% } %>
+<%- include('foot') %>

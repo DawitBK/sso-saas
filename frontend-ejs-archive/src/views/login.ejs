@@ -1,0 +1,13 @@
+<%- include('head', { title: 'Sign in' }) %>
+  <h2>Sign in</h2>
+  <p class="sub">Access <strong><%= clientName %></strong> with your Example Corp account.</p>
+  <% if (error) { %><div class="error"><%= error %></div><% } %>
+  <form method="post" action="/interaction/<%= uid %>/login" autocomplete="off">
+    <input type="hidden" name="csrf" value="<%= csrf %>" />
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" required autofocus value="<%= email %>" placeholder="you@examplecorp.com" />
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" required placeholder="••••••••" />
+    <button type="submit">Continue</button>
+  </form>
+<%- include('foot') %>

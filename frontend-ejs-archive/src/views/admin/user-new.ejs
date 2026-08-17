@@ -1,0 +1,61 @@
+<%- include('head', { title: 'New user', adminEmail }) %>
+  <h1>Register a new user</h1>
+  <p class="sub">For service accounts or staff without an AD account. AD users never need to be created here — they authenticate directly against LDAP.</p>
+
+  <div class="card" style="max-width:520px;">
+    <% if (error) { %><div class="error"><%= error %></div><% } %>
+    <form method="post" action="/admin/users">
+      <input type="hidden" name="csrf" value="<%= csrf %>" />
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" required autofocus style="width:100%;" placeholder="person@examplecorp.com" value="<%= form.email %>" />
+      <label for="given_name">First name</label>
+      <input id="given_name" name="given_name" type="text" style="width:100%;" value="<%= form.given_name %>" />
+      <label for="family_name">Last name</label>
+      <input id="family_name" name="family_name" type="text" style="width:100%;" value="<%= form.family_name %>" />
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" required minlength="8" style="width:100%;" placeholder="At least 8 characters" />
+
+      <h2 style="margin-top:22px;">System access (optional — set now or later)</h2>
+      <p class="sub" style="margin:0 0 10px;">Pick which systems this user can sign into and what role they get in each.</p>
+
+      <label for="dms_role">DMS (EDAMS) role</label>
+      <select id="dms_role" name="dms_role" style="width:100%;" <%= dmsConnected ? '' : 'disabled' %>>
+        <option value="" <%= !form.dms_role ? 'selected' : '' %>>— No DMS access —</option>
+        <% dmsRoles.forEach(function(r){ %><option value="<%= r %>" <%= form.dms_role === r ? 'selected' : '' %>><%= r %></option><% }); %>
+      </select>
+      <% if (!dmsConnected) { %><p class="sub" style="margin:4px 0 0; color:#b91c1c;">DMS_INTERNAL_API_KEY is not configured — DMS access can't be set until it is.</p><% } %>
+
+      <label for="gms_role">GMS role</label>
+      <select id="gms_role" name="gms_role" style="width:100%;" onchange="toggleOffice()">
+        <option value="" <%= !form.gms_role ? 'selected' : '' %>>— No GMS access —</option>
+        <% gmsRoles.forEach(function(r){ %><option value="<%= r %>" <%= form.gms_role === r ? 'selected' : '' %>><%= r %></option><% }); %>
+      </select>
+
+      <div id="office-field" style="display:none;">
+        <label for="office_id">Office <span class="muted" style="font-weight:400;">(required for admin/reception/host)</span></label>
+        <% if (officesError) { %>
+          <p class="sub" style="color:#b91c1c;"><%= officesError %></p>
+        <% } else { %>
+        <select id="office_id" name="office_id" style="width:100%;">
+          <option value="">— Select an office —</option>
+          <% offices.forEach(function(o){ %><option value="<%= o.id %>" <%= String(form.office_id) === String(o.id) ? 'selected' : '' %>><%= o.name %></option><% }); %>
+        </select>
+        <% } %>
+      </div>
+
+      <div style="margin-top:18px; display:flex; gap:10px;">
+        <button class="btn" type="submit">Create user</button>
+        <a class="btn secondary" href="/admin/users">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const OFFICE_SCOPED = <%- JSON.stringify(gmsOfficeScopedRoles) %>;
+    function toggleOffice() {
+      const role = document.getElementById('gms_role').value;
+      document.getElementById('office-field').style.display = OFFICE_SCOPED.includes(role) ? 'block' : 'none';
+    }
+    toggleOffice();
+  </script>
+<%- include('foot') %>

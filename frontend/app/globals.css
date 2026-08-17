@@ -1,0 +1,266 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #f8fafc;
+  --grad-1: #0f172a;
+  --grad-2: #166534;
+  --card: #ffffff;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --brand: #166534;
+  --brand-2: #15803d;
+  --brand-ink: #ffffff;
+  --border: #e2e8f0;
+  --input-bg: #ffffff;
+  --input-ink: #0f172a;
+  --danger: #b91c1c;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+  --ring: rgba(22, 101, 52, 0.35);
+  --shadow: rgba(2, 6, 23, 0.35);
+  --toggle-bg: rgba(255, 255, 255, 0.14);
+  --toggle-ink: #ffffff;
+  --code-bg: #f1f5f9;
+  --badge-on-bg: #dcfce7;
+  --badge-on-ink: #166534;
+  --badge-off-bg: #f1f5f9;
+  --badge-off-ink: #64748b;
+  --sidebar-w: 302px;
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #e2e8f0;
+  --sidebar-text: #64748b;
+  --sidebar-text-hover: #334155;
+  --sidebar-text-active: #0f172a;
+  --sidebar-active-bg: #f1f5f9;
+  --sidebar-active-border: #6366f1;
+  --sidebar-hover-bg: #f8fafc;
+  --sidebar-section-text: #94a3b8;
+  --sidebar-logo-text: #0f172a;
+  --sidebar-logo-sub: #64748b;
+}
+:root[data-theme='dark-black'] {
+  --bg: #0b1220;
+  --grad-1: #020617;
+  --grad-2: #052e16;
+  --card: #111a2e;
+  --ink: #e2e8f0;
+  --muted: #94a3b8;
+  --brand: #22c55e;
+  --brand-2: #16a34a;
+  --brand-ink: #04140a;
+  --border: #1e293b;
+  --input-bg: #0f172a;
+  --input-ink: #e2e8f0;
+  --danger: #fca5a5;
+  --danger-bg: #2a0e0e;
+  --danger-border: #7f1d1d;
+  --ring: rgba(34, 197, 94, 0.35);
+  --shadow: rgba(0, 0, 0, 0.55);
+  --toggle-bg: rgba(255, 255, 255, 0.1);
+  --toggle-ink: #e2e8f0;
+  --code-bg: #0f172a;
+  --badge-on-bg: #052e16;
+  --badge-on-ink: #4ade80;
+  --badge-off-bg: #1e293b;
+  --badge-off-ink: #94a3b8;
+  --sidebar-bg: #050505;
+  --sidebar-border: rgba(255, 255, 255, 0.05);
+  --sidebar-text: #6b7280;
+  --sidebar-text-hover: #a8a8a8;
+  --sidebar-text-active: #fafafa;
+  --sidebar-active-bg: rgba(255, 255, 255, 0.06);
+  --sidebar-active-border: #6b7280;
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.03);
+  --sidebar-section-text: #4a4a4a;
+  --sidebar-logo-text: #fafafa;
+  --sidebar-logo-sub: #6b7280;
+}
+:root[data-theme='dark-blue'] {
+  --bg: #050d1e;
+  --grad-1: #050d1e;
+  --grad-2: #0a1a3a;
+  --card: #091428;
+  --ink: #e2eaf9;
+  --muted: #607090;
+  --brand: #64ffda;
+  --brand-2: #00b4d8;
+  --brand-ink: #020612;
+  --border: #172a48;
+  --input-bg: #0a1628;
+  --input-ink: #e2eaf9;
+  --danger: #fca5a5;
+  --danger-bg: #2a0e0e;
+  --danger-border: #7f1d1d;
+  --ring: rgba(100, 255, 218, 0.35);
+  --shadow: rgba(0, 0, 0, 0.55);
+  --toggle-bg: rgba(100, 255, 218, 0.1);
+  --toggle-ink: #e2eaf9;
+  --code-bg: #0a1628;
+  --badge-on-bg: #0a1a3a;
+  --badge-on-ink: #64ffda;
+  --badge-off-bg: #0c1a30;
+  --badge-off-ink: #5a6e8a;
+  --sidebar-bg: #020612;
+  --sidebar-border: rgba(100, 255, 218, 0.08);
+  --sidebar-text: #5a6e8a;
+  --sidebar-text-hover: #8899bb;
+  --sidebar-text-active: #e2eaf9;
+  --sidebar-active-bg: rgba(100, 255, 218, 0.1);
+  --sidebar-active-border: #64ffda;
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.04);
+  --sidebar-section-text: #3a4e6a;
+  --sidebar-logo-text: #e2eaf9;
+  --sidebar-logo-sub: #5a6e8a;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); }
+body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+a { color: inherit; }
+
+/* Admin console shared components (mirrors SSO/frontend/src/views/admin/head.ejs) */
+.admin-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 18px; }
+.admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.admin-table th, .admin-table td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); }
+.admin-table th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.admin-table tr:last-child td { border-bottom: none; }
+.admin-link { color: var(--brand); text-decoration: none; font-weight: 600; }
+.admin-link:hover { text-decoration: underline; }
+.admin-btn { display: inline-block; padding: 8px 14px; border: 0; border-radius: 8px; background: var(--brand); color: #fff; font-weight: 600; font-size: 13px; cursor: pointer; text-decoration: none; }
+.admin-btn.secondary { background: var(--card); color: var(--ink); border: 1px solid var(--border); }
+.admin-btn.danger { background: var(--card); color: var(--danger); border: 1px solid var(--danger-border); }
+.admin-btn:hover { filter: brightness(1.08); }
+.admin-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.admin-badge.on { background: var(--badge-on-bg); color: var(--badge-on-ink); }
+.admin-badge.off { background: var(--badge-off-bg); color: var(--badge-off-ink); }
+.admin-code { font-size: 12px; background: var(--code-bg); padding: 2px 6px; border-radius: 6px; word-break: break-all; }
+.admin-checks { display: flex; gap: 16px; flex-wrap: wrap; margin: 8px 0 16px; }
+.admin-checks label { display: flex; align-items: center; gap: 6px; font-weight: 500; color: var(--ink); margin: 0; }
+
+input[type=text], input[type=email], input[type=password], select {
+  padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: var(--input-bg); color: var(--ink);
+}
+label.admin-label { display: block; font-size: 12px; font-weight: 600; margin: 10px 0 5px; color: var(--muted); }
+
+/* Theme dots (shared shape, sized differently per placement via inline style) */
+.theme-dot { border-radius: 50%; cursor: pointer; transition: all .12s ease; border: 2px solid transparent; padding: 0; margin: 0; }
+.theme-dot:hover { opacity: .8; }
+.theme-dot.active { transform: scale(1.15); }
+.theme-dot.light { background: #ffffff; border-color: #cbd5e1; }
+.theme-dot.dark-black { background: #0a0a0a; border-color: #333; }
+.theme-dot.dark-blue { background: #0a1628; border-color: #1e3a5f; }
+:root[data-theme='light'] .theme-dot.light { box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px #94a3b8; }
+:root[data-theme='dark-black'] .theme-dot.dark-black { box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px #64748b; }
+:root[data-theme='dark-blue'] .theme-dot.dark-blue { box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px #6366f1; }
+
+/* Admin sidebar (mirrors admin/head.ejs) — header stays put, and only the
+   sidebar's own nav / the main content scroll independently within the
+   remaining viewport height, so the sidebar (and its bottom theme/sign-out
+   controls) never scrolls away with long page content. */
+.admin-shell { display: flex; align-items: stretch; height: calc(100vh - 56px); }
+.admin-header { background: #0f172a; color: #fff; padding: 0 24px; display: flex; align-items: center; gap: 16px; height: 56px; flex-shrink: 0; }
+.admin-header .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; }
+.admin-header .brand .dot { width: 28px; height: 28px; border-radius: 8px; background: var(--brand); display: grid; place-items: center; font-size: 13px; }
+.admin-header .who { font-size: 12px; color: #94a3b8; margin-left: auto; }
+
+.admin-sidebar { width: var(--sidebar-w); flex-shrink: 0; height: 100%; padding: 16px 10px; position: relative; display: flex; flex-direction: column; background: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); overflow-y: auto; }
+.admin-sidebar nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.admin-sidebar a, .admin-sidebar summary { color: var(--sidebar-text); text-decoration: none; font-size: 14px; font-weight: 600; padding: 8px 10px; border-radius: 8px; display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; transition: all .12s ease; }
+.admin-sidebar a::-webkit-details-marker, .admin-sidebar summary::-webkit-details-marker { display: none; }
+.admin-sidebar a:hover { color: var(--sidebar-text-hover); background: var(--sidebar-hover-bg); }
+.admin-sidebar a.active { color: var(--sidebar-text-active); background: var(--sidebar-active-bg); }
+.admin-sidebar summary:hover { color: var(--sidebar-text-hover); background: var(--sidebar-hover-bg); }
+.admin-sidebar details { margin: 0; }
+.admin-sidebar details > summary::before { content: '▸'; font-size: 10px; transition: transform .12s ease; display: inline-block; width: 10px; }
+.admin-sidebar details[open] > summary::before { transform: rotate(90deg); }
+.admin-sidebar details .group-items { display: flex; flex-direction: column; gap: 2px; padding-left: 14px; margin-top: 2px; }
+.admin-sidebar-resize-handle { position: absolute; right: 0; top: 0; bottom: 0; width: 4px; cursor: col-resize; transition: background .15s ease; }
+.admin-sidebar-resize-handle:hover { background: rgba(34, 197, 94, .4); }
+.admin-sidebar-bottom { border-top: 1px solid var(--sidebar-border); padding: 8px 0; margin-top: auto; }
+.admin-sidebar-bottom .theme-selector { display: flex; align-items: center; gap: 4px; padding: 6px 8px; border-radius: 8px; margin: 0 4px 4px; }
+.admin-sidebar-bottom .theme-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--sidebar-text); flex: 1; }
+.admin-sidebar-bottom .theme-dot { width: 16px; height: 16px; }
+.admin-sidebar-signout { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border-radius: 8px; border: none; background: transparent; color: var(--sidebar-text); font-size: 14px; font-weight: 600; cursor: pointer; transition: all .12s ease; }
+.admin-sidebar-signout:hover { color: #f87171; background: rgba(239, 68, 68, .08); }
+
+.admin-main { flex: 1; max-width: 1000px; margin: 0 auto; padding: 28px 24px 60px; height: 100%; overflow-y: auto; box-sizing: border-box; }
+
+/* Mobile admin shell — below 1024px (same breakpoint DMS/GMS use for their
+   sidebar collapse) the desktop side-by-side sidebar becomes a hamburger-
+   triggered drawer instead. Two <AdminSidebar> instances are rendered (one
+   per wrapper below) rather than one instance toggled in place, so the
+   desktop one's drag-resize width (persisted in localStorage) never fights
+   the drawer's own fixed mobile width. */
+.admin-header-menu-btn { display: none; background: transparent; border: none; color: #fff; padding: 6px; margin: -6px 0 -6px -6px; border-radius: 8px; cursor: pointer; align-items: center; }
+.admin-header-menu-btn:hover { background: rgba(255, 255, 255, 0.08); }
+.admin-sidebar-desktop-wrap { flex-shrink: 0; height: 100%; }
+.admin-mobile-overlay { display: none; }
+.admin-sidebar-mobile-wrap { display: none; }
+
+@media (max-width: 1023px) {
+  .admin-header-menu-btn { display: inline-flex; }
+  .admin-header .who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 45vw; }
+
+  .admin-shell { position: relative; }
+  .admin-sidebar-desktop-wrap { display: none; }
+
+  .admin-mobile-overlay {
+    display: block;
+    position: fixed;
+    top: 56px; left: 0; right: 0; bottom: 0;
+    background: rgba(2, 6, 23, 0.5);
+    z-index: 39;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease;
+  }
+  .admin-mobile-overlay.open { opacity: 1; pointer-events: auto; }
+
+  .admin-sidebar-mobile-wrap {
+    display: block;
+    position: fixed;
+    top: 56px; left: 0; bottom: 0;
+    z-index: 40;
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+    will-change: transform;
+  }
+  .admin-sidebar-mobile-wrap.open { transform: translateX(0); }
+  .admin-sidebar-mobile-wrap .admin-sidebar { width: min(85vw, 320px) !important; height: 100%; box-shadow: 8px 0 24px var(--shadow); }
+  .admin-sidebar-mobile-wrap .admin-sidebar-resize-handle { display: none; }
+
+  .admin-main { max-width: 100%; padding: 20px 16px 48px; }
+}
+
+/* Portal (mirrors SSO/frontend/src/views/portal.ejs) */
+.portal-layout { display: flex; min-height: 100vh; width: 100%; }
+.portal-brand-panel { width: 380px; flex-shrink: 0; background: #0d0f1a; border-right: 1px solid rgba(255, 255, 255, .06); padding: 40px 36px; display: flex; flex-direction: column; justify-content: space-between; }
+.portal-brand-panel .logo { display: flex; align-items: center; gap: 12px; }
+.portal-brand-panel .logo .dot { width: 40px; height: 40px; border-radius: 10px; background: var(--brand); display: grid; place-items: center; font-weight: 700; font-size: 18px; color: var(--brand-ink); }
+.portal-main { flex: 1; padding: 40px 48px; overflow-y: auto; background: var(--bg); }
+.portal-app-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); text-decoration: none; color: var(--ink); transition: border-color .12s ease; }
+.portal-app-item:hover { border-color: var(--brand); }
+.portal-app-item.disabled { opacity: .5; pointer-events: none; }
+@media (max-width: 768px) {
+  .portal-brand-panel { display: none; }
+  .portal-main { padding: 24px; }
+}
+
+/* Auth card shell (login/totp/change-password — mirrors head.ejs's .card/.brand) */
+.sso-card { background: var(--card); width: 100%; max-width: 400px; border-radius: 16px; box-shadow: 0 20px 60px var(--shadow); padding: 32px; border: 1px solid var(--border); }
+.sso-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+.sso-brand-dot { width: 36px; height: 36px; border-radius: 10px; background: var(--brand); color: var(--brand-ink); display: grid; place-items: center; font-weight: 700; }
+.sso-brand h1 { font-size: 15px; margin: 0; letter-spacing: .2px; }
+.sso-brand p { margin: 0; font-size: 12px; color: var(--muted); }
+.sub { color: var(--muted); font-size: 13px; margin: 0 0 22px; }
+.foot { margin-top: 20px; font-size: 11px; color: var(--muted); text-align: center; }
+.sso-input { width: 100%; padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; background: var(--input-bg); color: var(--input-ink); }
+.sso-input:focus { outline: 3px solid var(--ring); border-color: var(--brand); }
+.sso-button { width: 100%; margin-top: 22px; padding: 12px; border: 0; border-radius: 10px; background: var(--brand); color: var(--brand-ink); font-weight: 600; font-size: 14px; cursor: pointer; transition: filter .12s ease; }
+.sso-button:hover { filter: brightness(1.06); }
+.sso-button:disabled { opacity: .7; cursor: default; }
+.sso-error { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); padding: 10px 12px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; }
+.sso-theme-selector { position: fixed; top: 18px; right: 18px; z-index: 50; display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--toggle-bg); backdrop-filter: blur(6px); }
+.sso-theme-selector .theme-dot { width: 18px; height: 18px; }

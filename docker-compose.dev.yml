@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sso-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: leadfreak
+      POSTGRES_DB: idp
+    ports:
+      - "5436:5432"
+    volumes:
+      - sso_pgdata_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d idp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  sso_pgdata_dev:

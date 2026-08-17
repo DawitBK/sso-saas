@@ -1,0 +1,35 @@
+    </main>
+  </div>
+  <script>
+    function __kgSetTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      try { localStorage.setItem('kg-theme', theme); } catch (e) {}
+    }
+
+    // Sidebar resize
+    (function() {
+      var sidebar = document.getElementById('sidebar');
+      var handle = document.getElementById('sidebarResizeHandle');
+      if (!sidebar || !handle) return;
+      var saved = localStorage.getItem('kg-sidebar-w');
+      if (saved) { sidebar.style.width = saved + 'px'; }
+      handle.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        var startX = e.clientX;
+        var startW = sidebar.offsetWidth;
+        function onMove(me) {
+          var w = Math.max(180, Math.min(500, startW + (me.clientX - startX)));
+          sidebar.style.width = w + 'px';
+        }
+        function onUp() {
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          localStorage.setItem('kg-sidebar-w', sidebar.offsetWidth);
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+    })();
+  </script>
+</body>
+</html>

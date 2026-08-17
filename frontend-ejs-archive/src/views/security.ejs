@@ -1,0 +1,101 @@
+<%- include('head', { title: 'Security' }) %>
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+    <div>
+      <h2 style="margin-bottom:2px">Security</h2>
+      <p class="sub" style="margin:0"><%= userEmail %></p>
+    </div>
+    <a href="/portal" class="go" style="font-size:12px; text-decoration:none;">← Back to apps</a>
+  </div>
+
+  <% if (error) { %><div class="error" style="margin-top:14px;"><%= error %></div><% } %>
+
+  <% if (pending) { %>
+    <p class="sub" style="margin-top:16px;"><strong>1.</strong> In your authenticator app (Google Authenticator, Authy, …) choose
+    “Enter a setup key” and add:</p>
+    <p style="font-family:ui-monospace,monospace; font-size:15px; letter-spacing:.12em; background:#f1f5f9; padding:10px 12px; border-radius:10px; word-break:break-all;"><%= pending.secret %></p>
+    <p class="sub" style="font-size:11px; word-break:break-all;">or use this URI: <%= pending.uri %></p>
+    <p class="sub"><strong>2.</strong> Enter the 6-digit code the app shows to finish:</p>
+    <form method="post" action="/portal/security/totp/confirm" autocomplete="off">
+      <input type="hidden" name="csrf" value="<%= csrf %>" />
+      <input name="code" type="text" inputmode="numeric" maxlength="6" required autofocus placeholder="000000"
+             style="width:100%; padding:11px 12px; border:1px solid var(--border); border-radius:10px; letter-spacing:.4em; text-align:center; font-size:18px; font-family:ui-monospace,monospace;" />
+      <button type="submit">Turn on two-factor auth</button>
+    </form>
+  <% } else if (mfaEnabled) { %>
+    <p class="sub" style="margin-top:16px;">Two-factor authentication is <strong style="color:#166534;">ON</strong> — every sign-in asks for a code from your app.</p>
+    <p class="sub">To turn it off, confirm with a current code:</p>
+    <form method="post" action="/portal/security/totp/disable" autocomplete="off">
+      <input type="hidden" name="csrf" value="<%= csrf %>" />
+      <input name="code" type="text" inputmode="numeric" maxlength="6" required placeholder="000000"
+             style="width:100%; padding:11px 12px; border:1px solid var(--border); border-radius:10px; letter-spacing:.4em; text-align:center; font-size:18px; font-family:ui-monospace,monospace;" />
+      <button type="submit" class="secondary" style="border:1px solid #fecaca; color:#b91c1c;">Turn off two-factor auth</button>
+    </form>
+    <p class="sub" style="font-size:11px; margin-top:10px;">Lost your device? Ask an administrator to reset two-factor auth for your account.</p>
+  <% } else { %>
+    <p class="sub" style="margin-top:16px;">Two-factor authentication is <strong>off</strong>. With it on, signing in requires your password <em>and</em> a 6-digit code from an authenticator app — stolen passwords alone stop working.</p>
+    <form method="post" action="/portal/security/totp/start">
+      <input type="hidden" name="csrf" value="<%= csrf %>" />
+      <button type="submit">Set up two-factor auth</button>
+    </form>
+  <% } %>
+
+  <p style="font-weight:700; font-size:12px; margin:26px 0 8px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted);">Password</p>
+  <% if (canChangePassword) { %>
+    <% if (passwordError) { %><div class="error"><%= passwordError %></div><% } %>
+    <form method="post" action="/portal/security/password/change" autocomplete="off">
+      <input type="hidden" name="csrf" value="<%= csrf %>" />
+      <label for="current_password">Current password</label>
+      <input id="current_password" name="current_password" type="password" required autocomplete="current-password" />
+      <label for="new_password">New password</label>
+      <input id="new_password" name="new_password" type="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters" />
+      <label for="confirm_password">Confirm new password</label>
+      <input id="confirm_password" name="confirm_password" type="password" required minlength="8" autocomplete="new-password" />
+      <button type="submit" class="secondary">Update password</button>
+    </form>
+  <% } else { %>
+    <p class="sub" style="margin:0;">Your password is managed outside the IdP (Active Directory) — contact IT to change it.</p>
+  <% } %>
+
+  <p style="font-weight:700; font-size:12px; margin:26px 0 8px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted);">Your active sessions</p>
+  <% if (mySessions.length === 0) { %>
+    <p class="sub" style="margin:0;">No live sessions found.</p>
+  <% } else { %>
+    <div>
+      <% mySessions.forEach(function(s){ %>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); font-size:12px;">
+          <div>
+            <strong style="text-transform:capitalize;"><%= s.kind %></strong><% if (s.current) { %> <span style="color:#166534; font-weight:600;">— this device</span><% } %>
+            <div style="color:var(--muted); font-size:11px; margin-top:2px;">
+              since <%= new Date(s.createdAt).toLocaleString() %><% if (s.expiresAt) { %> · expires <%= new Date(s.expiresAt).toLocaleString() %><% } %>
+            </div>
+          </div>
+          <% if (!s.current) { %>
+          <form method="post" action="/portal/security/sessions/kill" style="margin:0;">
+            <input type="hidden" name="csrf" value="<%= csrf %>" />
+            <input type="hidden" name="kind" value="<%= s.kind %>" />
+            <input type="hidden" name="key" value="<%= s.key %>" />
+            <button type="submit" style="width:auto; margin:0; padding:6px 10px; font-size:11px; border-radius:8px; border:1px solid #fecaca; background:#fff; color:#b91c1c; cursor:pointer;">Sign out</button>
+          </form>
+          <% } %>
+        </div>
+      <% }); %>
+    </div>
+  <% } %>
+  <p class="sub" style="font-size:11px; margin-top:8px;">Signing out a session ends that device's access immediately. To end everything at once (including this device), use Sign out on the apps page.</p>
+
+  <p style="font-weight:700; font-size:12px; margin:26px 0 8px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted);">Recent sign-in activity</p>
+  <% if (recentLogins.length === 0) { %>
+    <p class="sub" style="margin:0;">No sign-in attempts recorded yet.</p>
+  <% } else { %>
+    <div>
+      <% recentLogins.forEach(function(l){ %>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid var(--border); font-size:12px;">
+          <span style="<%= l.success ? 'color:#166534;' : 'color:#b91c1c;' %> font-weight:600;"><%= l.success ? 'Success' : (l.reason || 'Failed') %></span>
+          <span style="color:var(--muted);"><%= l.ip || '—' %></span>
+          <span style="color:var(--muted);"><%= new Date(l.created_at).toLocaleString() %></span>
+        </div>
+      <% }); %>
+    </div>
+    <p class="sub" style="font-size:11px; margin-top:8px;">Don't recognize one of these? Change your password above (or ask an administrator to reset it) and let IT know.</p>
+  <% } %>
+<%- include('foot') %>

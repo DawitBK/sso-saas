@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title><%= title %> · Example Corp SSO</title>
+    <!-- Set the theme before first paint so there's no light/dark flash. -->
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem("kg-theme");
+          var themes = ["light", "dark-black", "dark-blue"];
+          if (saved && themes.indexOf(saved) !== -1) {
+            document.documentElement.setAttribute("data-theme", saved);
+          } else {
+            var sys =
+              window.matchMedia &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark-black"
+                : "light";
+            document.documentElement.setAttribute("data-theme", sys);
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <style>
+      :root {
+        --bg: #f8fafc;
+        --grad-1: #0f172a;
+        --grad-2: #166534;
+        --card: #ffffff;
+        --ink: #0f172a;
+        --muted: #64748b;
+        --brand: #166534;
+        --brand-2: #15803d;
+        --brand-ink: #ffffff;
+        --border: #e2e8f0;
+        --input-bg: #ffffff;
+        --input-ink: #0f172a;
+        --danger: #b91c1c;
+        --danger-bg: #fef2f2;
+        --danger-border: #fecaca;
+        --ring: rgba(22, 101, 52, 0.35);
+        --shadow: rgba(2, 6, 23, 0.35);
+        --toggle-bg: rgba(255, 255, 255, 0.14);
+        --toggle-ink: #ffffff;
+        --sidebar-bg: #0f172a;
+        --sidebar-border: rgba(255, 255, 255, 0.08);
+        --sidebar-text: #64748b;
+        --sidebar-text-hover: #94a3b8;
+        --sidebar-text-active: #f1f5f9;
+        --sidebar-active-bg: rgba(99, 102, 241, 0.18);
+        --sidebar-active-border: #818cf8;
+        --sidebar-hover-bg: rgba(255, 255, 255, 0.06);
+        --sidebar-section-text: #5a6a82;
+        --sidebar-logo-text: #f1f5f9;
+        --sidebar-logo-sub: #64748b;
+      }
+      :root[data-theme="dark-black"] {
+        --bg: #0b1220;
+        --grad-1: #020617;
+        --grad-2: #052e16;
+        --card: #0b1220;
+        --ink: #e2e8f0;
+        --muted: #94a3b8;
+        --brand: #22c55e;
+        --brand-2: #16a34a;
+        --brand-ink: #04140a;
+        --border: #1e293b;
+        --input-bg: #0f172a;
+        --input-ink: #e2e8f0;
+        --danger: #fca5a5;
+        --danger-bg: #2a0e0e;
+        --danger-border: #7f1d1d;
+        --ring: rgba(34, 197, 94, 0.35);
+        --shadow: rgba(0, 0, 0, 0.55);
+        --toggle-bg: rgba(255, 255, 255, 0.1);
+        --toggle-ink: #e2e8f0;
+        --sidebar-bg: #050505;
+        --sidebar-border: rgba(255, 255, 255, 0.05);
+        --sidebar-text: #6b7280;
+        --sidebar-text-hover: #a8a8a8;
+        --sidebar-text-active: #fafafa;
+        --sidebar-active-bg: rgba(255, 255, 255, 0.06);
+        --sidebar-active-border: #6b7280;
+        --sidebar-hover-bg: rgba(255, 255, 255, 0.03);
+        --sidebar-section-text: #4a4a4a;
+        --sidebar-logo-text: #fafafa;
+        --sidebar-logo-sub: #6b7280;
+      }
+      :root[data-theme="dark-blue"] {
+        --bg: #050d1e;
+        --grad-1: #050d1e;
+        --grad-2: #0a1a3a;
+        --card: #091428;
+        --ink: #e2eaf9;
+        --muted: #607090;
+        --brand: #64ffda;
+        --brand-2: #00b4d8;
+        --brand-ink: #020612;
+        --border: #172a48;
+        --input-bg: #0a1628;
+        --input-ink: #e2eaf9;
+        --danger: #fca5a5;
+        --danger-bg: #2a0e0e;
+        --danger-border: #7f1d1d;
+        --ring: rgba(100, 255, 218, 0.35);
+        --shadow: rgba(0, 0, 0, 0.55);
+        --toggle-bg: rgba(100, 255, 218, 0.1);
+        --toggle-ink: #e2eaf9;
+        --sidebar-bg: #020612;
+        --sidebar-border: rgba(100, 255, 218, 0.08);
+        --sidebar-text: #5a6e8a;
+        --sidebar-text-hover: #8899bb;
+        --sidebar-text-active: #e2eaf9;
+        --sidebar-active-bg: rgba(100, 255, 218, 0.1);
+        --sidebar-active-border: #64ffda;
+        --sidebar-hover-bg: rgba(255, 255, 255, 0.04);
+        --sidebar-section-text: #3a4e6a;
+        --sidebar-logo-text: #e2eaf9;
+        --sidebar-logo-sub: #5a6e8a;
+      }
+      * { box-sizing: border-box; }
+      body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        background: linear-gradient(135deg, var(--grad-1) 0%, var(--grad-2) 100%); color: var(--ink); padding: 24px; }
+      .card { background: var(--card); width:100%; max-width: 400px; border-radius: 16px;
+        box-shadow: 0 20px 60px var(--shadow); padding: 32px; border:1px solid var(--border); }
+      .brand { display:flex; align-items:center; gap:10px; margin-bottom: 24px; }
+      .brand .dot { width:36px; height:36px; border-radius:10px; background: var(--brand); color: var(--brand-ink);
+        display:grid; place-items:center; font-weight:700; }
+      .brand h1 { font-size: 15px; margin:0; letter-spacing:.2px; }
+      .brand p { margin:0; font-size:12px; color: var(--muted); }
+      h2 { font-size: 20px; margin: 0 0 4px; }
+      .sub { color: var(--muted); font-size: 13px; margin: 0 0 22px; }
+      label { display:block; font-size: 13px; font-weight:600; margin: 14px 0 6px; }
+      input[type=email], input[type=password], input[type=text] { width:100%; padding: 11px 12px; border:1px solid var(--border);
+        border-radius: 10px; font-size: 14px; background: var(--input-bg); color: var(--input-ink); }
+      input:focus { outline: 3px solid var(--ring); border-color: var(--brand); }
+      button { width:100%; margin-top: 22px; padding: 12px; border:0; border-radius: 10px;
+        background: var(--brand); color: var(--brand-ink); font-weight:600; font-size: 14px; cursor:pointer; transition: filter .12s ease; }
+      button.secondary { background: var(--card); color: var(--ink); border:1px solid var(--border); }
+      button:hover { filter: brightness(1.06); }
+      .error { background: var(--danger-bg); color: var(--danger); border:1px solid var(--danger-border);
+        padding: 10px 12px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; }
+      .scopes { list-style:none; padding:0; margin: 8px 0 0; }
+      .scopes li { padding: 8px 12px; border:1px solid var(--border); border-radius: 8px; margin-bottom:6px; font-size:13px; }
+      .foot { margin-top: 20px; font-size: 11px; color: var(--muted); text-align:center; }
+      .apps { display:grid; gap:10px; margin-top: 8px; }
+      .app { display:flex; align-items:center; justify-content:space-between; padding: 14px 16px;
+        border:1px solid var(--border); border-radius: 12px; text-decoration:none; color:var(--ink); transition: border-color .12s ease; }
+      .app:hover { border-color: var(--brand); }
+      .app .name { font-weight:600; font-size:14px; }
+      .app .go { color: var(--brand); font-size: 13px; font-weight:600; }
+      /* Theme toggle - 3-circle DMS-style selector */
+      .theme-selector { position: fixed; top: 18px; right: 18px; z-index: 50; display:flex; align-items:center; gap:6px;
+        padding:6px 10px; border-radius: 12px; border:1px solid var(--border); background: var(--toggle-bg); backdrop-filter: blur(6px); }
+      .theme-selector .theme-label { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color: var(--muted); margin-right:4px; }
+      .theme-dot { width:18px; height:18px; border-radius:50%; cursor:pointer; transition: all .15s ease; border:2px solid transparent; }
+      .theme-dot:hover { opacity:.8; }
+      .theme-dot.active { transform: scale(1.15); }
+      .theme-dot.light { background:#ffffff; border-color:#cbd5e1; }
+      .theme-dot.dark-black { background:#0a0a0a; border-color:#333; }
+      .theme-dot.dark-blue { background:#0a1628; border-color:#1e3a5f; }
+      :root[data-theme="light"] .theme-dot.light { box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px #94a3b8; }
+      :root[data-theme="dark-black"] .theme-dot.dark-black { box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px #64748b; }
+      :root[data-theme="dark-blue"] .theme-dot.dark-blue { box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px #6366f1; }
+    </style>
+  </head>
+  <body>
+    <div class="theme-selector">
+      <span class="theme-label">Theme</span>
+      <button type="button" class="theme-dot light" onclick="__kgSetTheme('light')" aria-label="Light theme" title="Light"></button>
+      <button type="button" class="theme-dot dark-black" onclick="__kgSetTheme('dark-black')" aria-label="Black theme" title="Black"></button>
+      <button type="button" class="theme-dot dark-blue" onclick="__kgSetTheme('dark-blue')" aria-label="Blue theme" title="Blue"></button>
+    </div>
+    <div class="card">
+      <div class="brand">
+        <div class="dot">K</div>
+        <div>
+          <h1>Example Corp Identity</h1>
+          <p>Single sign-on</p>
+        </div>
+      </div>
