@@ -188,3 +188,4 @@ migrations/            001_init.sql … 007_phase_e.sql (numbered, sequential �
 - `SSO-INTEGRATION-GUIDE.md` — **how to fit future apps** (new + legacy PHP/JS), 3 modes
 - `SSO-OPERATIONS.md` — setup, run, deploy, troubleshooting
 - `SSO-SESSION-LOG.md` — full build record
+
