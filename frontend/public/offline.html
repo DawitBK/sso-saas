@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>You're offline — Example Corp SSO</title>
+<style>
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8fafc;
+    color: #0f172a;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .card {
+    max-width: 360px;
+    text-align: center;
+    padding: 2rem;
+  }
+  .card h1 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem;
+  }
+  .card p {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin: 0 0 1.5rem;
+  }
+  button {
+    background: #166534;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 0.6rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>You're offline</h1>
+    <p>Sign-in can't be completed without a connection. Check your network and try again.</p>
+    <button onclick="location.reload()">Retry</button>
+  </div>
+</body>
+</html>

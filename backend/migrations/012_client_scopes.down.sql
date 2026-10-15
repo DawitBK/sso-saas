@@ -1,0 +1,1 @@
+ALTER TABLE idp_clients DROP COLUMN IF EXISTS scope;

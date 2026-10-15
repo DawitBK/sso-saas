@@ -1,0 +1,365 @@
+<title>Example Corp SSO — Operations</title>
+<style>
+<style>
+  :root{
+    --bg:#f6f5f1; --surface:#ffffff; --surface-2:#f0efe9;
+    --ink:#1c2024; --ink-2:#4b555c; --ink-3:#727f86;
+    --border:#dedcd3; --border-2:#cbc9be;
+    --accent:#2a6f74; --accent-ink:#123639; --accent-soft:#e2eeee; --accent-soft-border:#c3dbdc;
+    --code-bg:#12181c; --code-ink:#d8e2e6; --code-border:#232c31;
+    --good:#2f7d4f; --warn:#a2661a; --bad:#a3402f;
+    --shadow: 0 1px 2px rgba(20,20,15,0.04), 0 8px 24px -12px rgba(20,20,15,0.10);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#15181a; --surface:#1b1f22; --surface-2:#202427;
+      --ink:#e7e6e1; --ink-2:#b3b8ba; --ink-3:#838d90;
+      --border:#2c3134; --border-2:#3a4145;
+      --accent:#6fc2c6; --accent-ink:#d3f0f1; --accent-soft:#1c2b2c; --accent-soft-border:#2a3f40;
+      --code-bg:#0d1113; --code-ink:#d8e2e6; --code-border:#242a2d;
+      --good:#5fbf85; --warn:#d69a4e; --bad:#e07b68;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#15181a; --surface:#1b1f22; --surface-2:#202427;
+    --ink:#e7e6e1; --ink-2:#b3b8ba; --ink-3:#838d90;
+    --border:#2c3134; --border-2:#3a4145;
+    --accent:#6fc2c6; --accent-ink:#d3f0f1; --accent-soft:#1c2b2c; --accent-soft-border:#2a3f40;
+    --code-bg:#0d1113; --code-ink:#d8e2e6; --code-border:#242a2d;
+    --good:#5fbf85; --warn:#d69a4e; --bad:#e07b68;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-size:16px; line-height:1.62;
+  }
+  ::selection{ background:var(--accent-soft-border); }
+  h1,h2,h3,h4{
+    font-family:"Source Serif 4","Iowan Old Style", Georgia, serif;
+    color:var(--ink); font-weight:600; text-wrap:balance; line-height:1.22;
+  }
+  a{ color:var(--accent-ink); text-decoration-color:var(--accent-soft-border); text-underline-offset:2px; }
+  a:hover{ text-decoration-color:currentColor; }
+  code, pre, .mono{ font-family:"IBM Plex Mono","SFMono-Regular",Consolas,monospace; }
+  code{ background:var(--surface-2); border:1px solid var(--border); border-radius:4px; padding:0.05em 0.4em; font-size:0.86em; }
+  p code, li code, td code{ white-space:nowrap; }
+
+  /* ---------- shell layout ---------- */
+  .shell{ display:grid; grid-template-columns: 288px minmax(0,1fr); min-height:100vh; }
+  .side{
+    position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+    border-right:1px solid var(--border); background:var(--surface);
+    padding:22px 14px 40px;
+  }
+  .side::-webkit-scrollbar{ width:8px; }
+  .side::-webkit-scrollbar-thumb{ background:var(--border-2); border-radius:8px; }
+  .brand{ display:flex; align-items:baseline; gap:8px; padding:2px 10px 16px; border-bottom:1px solid var(--border); margin-bottom:10px;}
+  .brand .mark{ font-family:"Source Serif 4",serif; font-weight:700; font-size:1.05rem; color:var(--accent-ink); }
+  .brand .sub{ font-size:0.7rem; color:var(--ink-3); text-transform:uppercase; letter-spacing:.08em; }
+  nav.toc{ display:flex; flex-direction:column; gap:1px; }
+  nav.toc a{
+    display:block; padding:6px 10px; border-radius:6px; font-size:0.83rem;
+    color:var(--ink-2); text-decoration:none; white-space:normal;
+  }
+  nav.toc a .n{ color:var(--ink-3); font-variant-numeric:tabular-nums; margin-right:6px; font-size:0.78rem; }
+  nav.toc a:hover{ background:var(--surface-2); color:var(--ink); }
+  nav.toc a.active{ background:var(--accent-soft); color:var(--accent-ink); font-weight:600; }
+  .side-foot{ margin-top:18px; padding:10px 10px 0; border-top:1px solid var(--border); font-size:0.72rem; color:var(--ink-3); }
+
+  .navtoggle{ display:none; }
+
+  main{ min-width:0; }
+  .wrap{ max-width:840px; margin:0 auto; padding:56px 32px 120px; }
+
+  /* ---------- cover ---------- */
+  .cover{ margin-bottom:44px; }
+  .cover .eyebrow{
+    display:inline-flex; align-items:center; gap:8px; font-size:0.74rem; letter-spacing:.10em; text-transform:uppercase;
+    color:var(--accent-ink); background:var(--accent-soft); border:1px solid var(--accent-soft-border);
+    padding:4px 10px; border-radius:20px; margin-bottom:18px;
+  }
+  .cover h1{ font-size:2.6rem; margin:0 0 10px; letter-spacing:-.01em; }
+  .cover .dek{ font-size:1.12rem; color:var(--ink-2); max-width:62ch; margin:0 0 22px; }
+  .meta-row{ display:flex; flex-wrap:wrap; gap:10px 26px; padding:16px 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); margin-bottom:22px;}
+  .meta-item{ font-size:0.82rem; color:var(--ink-2); }
+  .meta-item b{ color:var(--ink); font-weight:600; }
+  .cover p.lead{ font-size:1rem; color:var(--ink-2); }
+  .cover p.lead strong{ color:var(--ink); }
+
+  .refs-table{ margin-top:10px; }
+
+  /* ---------- sections ---------- */
+  .sec{ padding-top:64px; margin-top:-64px; }
+  .sec-head{ display:flex; align-items:baseline; gap:12px; margin: 0 0 18px; }
+  .tag{
+    font-family:"IBM Plex Mono",monospace; font-size:0.76rem; color:var(--accent-ink);
+    background:var(--accent-soft); border:1px solid var(--accent-soft-border); border-radius:5px;
+    padding:2px 7px; flex:none; transform:translateY(-2px);
+  }
+  h2{ font-size:1.56rem; margin:0; }
+  h3{ font-size:1.18rem; margin:30px 0 10px; }
+  h4{ font-size:1.0rem; margin:20px 0 8px; color:var(--ink); }
+  .sec > hr, hr.rule{ border:none; border-top:1px solid var(--border); margin:52px 0; }
+
+  p{ margin: 0 0 14px; }
+  ul, ol{ margin:0 0 14px; padding-left:1.35em; }
+  li{ margin-bottom:6px; }
+  li::marker{ color:var(--ink-3); }
+
+  blockquote.callout{
+    margin:18px 0; padding:14px 18px; border-left:3px solid var(--accent); background:var(--accent-soft);
+    border-radius:0 8px 8px 0; color:var(--ink-2); font-size:0.96rem;
+  }
+  blockquote.callout p{ margin:0 0 8px; }
+  blockquote.callout p:last-child{ margin-bottom:0; }
+  blockquote.callout strong{ color:var(--ink); }
+
+  .twrap{ overflow-x:auto; margin:16px 0 22px; border:1px solid var(--border); border-radius:10px; box-shadow:var(--shadow); }
+  table{ border-collapse:collapse; width:100%; font-size:0.86rem; background:var(--surface); }
+  thead th{
+    text-align:left; font-family:"IBM Plex Mono",monospace; font-size:0.72rem; letter-spacing:.04em; text-transform:uppercase;
+    color:var(--ink-3); background:var(--surface-2); padding:10px 14px; border-bottom:1px solid var(--border); white-space:nowrap;
+  }
+  td{ padding:10px 14px; border-bottom:1px solid var(--border); vertical-align:top; color:var(--ink-2); }
+  tr:last-child td{ border-bottom:none; }
+  td:first-child{ color:var(--ink); font-weight:600; white-space:nowrap; }
+  td b, td strong{ color:var(--ink); }
+
+  pre{
+    background:var(--code-bg); color:var(--code-ink); border:1px solid var(--code-border);
+    border-radius:10px; padding:16px 18px; overflow-x:auto; font-size:0.82rem; line-height:1.58;
+    margin:14px 0 20px; box-shadow:var(--shadow);
+  }
+  pre code{ background:none; border:none; padding:0; color:inherit; }
+
+  .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0 24px; }
+  @media (max-width:720px){ .grid-3{ grid-template-columns:1fr; } }
+  .sys-card{ border:1px solid var(--border); border-radius:12px; padding:16px 16px 14px; background:var(--surface); box-shadow:var(--shadow); }
+  .sys-card .name{ font-family:"Source Serif 4",serif; font-weight:700; font-size:1.08rem; margin-bottom:2px; }
+  .sys-card .role{ font-size:0.78rem; color:var(--ink-3); margin-bottom:10px; }
+  .sys-card dl{ margin:0; display:grid; grid-template-columns:auto 1fr; gap:4px 10px; font-size:0.8rem; }
+  .sys-card dt{ color:var(--ink-3); }
+  .sys-card dd{ margin:0; color:var(--ink); font-family:"IBM Plex Mono",monospace; text-align:right; }
+
+  figure.diagram{ margin:20px 0 26px; padding:18px 18px 10px; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); }
+  figure.diagram svg{ width:100%; height:auto; display:block; color:var(--ink-2); }
+  figure.diagram pre.mermaid{ margin:0; box-shadow:none; }
+  figure.diagram figcaption{ font-size:0.8rem; color:var(--ink-3); margin-top:8px; padding-top:8px; border-top:1px solid var(--border); }
+
+  .pill{ display:inline-block; font-size:0.72rem; padding:1px 8px; border-radius:20px; font-weight:600; }
+  .pill.good{ background:color-mix(in srgb, var(--good) 16%, transparent); color:var(--good); }
+  .pill.warn{ background:color-mix(in srgb, var(--warn) 16%, transparent); color:var(--warn); }
+  .pill.bad{ background:color-mix(in srgb, var(--bad) 16%, transparent); color:var(--bad); }
+
+  .backlink{ position:fixed; right:22px; bottom:22px; background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow);
+    border-radius:999px; width:40px; height:40px; display:flex; align-items:center; justify-content:center; color:var(--ink-2);
+    text-decoration:none; opacity:0; pointer-events:none; transition:opacity .18s ease; font-size:1.1rem; }
+  .backlink.show{ opacity:1; pointer-events:auto; }
+
+  footer.doc-foot{ margin-top:60px; padding-top:24px; border-top:1px solid var(--border); font-size:0.84rem; color:var(--ink-3); font-style:italic; }
+
+  dl.glossary{ display:grid; grid-template-columns:max-content 1fr; gap:6px 16px; }
+  dl.glossary dt{ font-weight:600; color:var(--ink); font-family:"IBM Plex Mono",monospace; font-size:0.86rem; }
+  dl.glossary dd{ margin:0 0 8px; color:var(--ink-2); }
+
+  @media (max-width:960px){
+    .shell{ grid-template-columns:1fr; }
+    .side{ position:relative; height:auto; top:0; border-right:none; border-bottom:1px solid var(--border); }
+    .side.collapsed nav.toc, .side.collapsed .side-foot{ display:none; }
+    .navtoggle{ display:flex; align-items:center; gap:8px; width:100%; background:var(--surface-2); border:1px solid var(--border);
+      border-radius:8px; padding:9px 12px; font-size:0.82rem; color:var(--ink); cursor:pointer; margin-bottom:4px; }
+    .wrap{ padding:36px 20px 90px; }
+    .cover h1{ font-size:2rem; }
+  }
+  @media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto; } .backlink{ transition:none; } }
+
+  ul.checklist{ list-style:none; padding-left:0.2em; }
+  ul.checklist li{ position:relative; padding-left:1.6em; }
+  ul.checklist li::before{ content:"☐"; position:absolute; left:0; top:0; color:var(--ink-3); }
+</style>
+<div class="shell">
+  <aside class="side" id="side">
+    <div class="brand"><span class="mark">Example Corp SSO</span><span class="sub">Operations</span></div>
+    <button class="navtoggle" id="navtoggle" type="button">☰ Contents</button>
+    <nav class="toc" id="toc">
+      <a href="#top"><span class="n">—</span>Overview</a>
+      <a href="#1-service-basics"><span class="n">01</span>Service basics</a>
+      <a href="#2-running-it"><span class="n">02</span>Running it</a>
+      <a href="#3-configuration"><span class="n">03</span>Configuration</a>
+      <a href="#4-signing-keys"><span class="n">04</span>Signing keys</a>
+      <a href="#5-sessions-and-the-audit-chain"><span class="n">05</span>Sessions &amp; audit chain</a>
+      <a href="#6-backups"><span class="n">06</span>Backups</a>
+      <a href="#7-troubleshooting"><span class="n">07</span>Troubleshooting</a>
+    </nav>
+    <div class="side-foot">Part of the SSO documentation set<br>See also: Architecture · Integration Guide</div>
+  </aside>
+
+  <main>
+    <div class="wrap" id="top">
+
+      <div class="cover">
+        <span class="eyebrow">SSO documentation · Operations</span>
+        <h1>Example Corp SSO — Operations</h1>
+        <p class="dek">Running the identity provider day to day: what to check, what the admin console's sensitive actions actually do, and how to recover.</p>
+        <div class="meta-row">
+          <div class="meta-item"><b>Read this for:</b> day-to-day running, deploying, and troubleshooting</div>
+          <div class="meta-item"><b>Read Architecture for:</b> the design</div>
+          <div class="meta-item"><b>Read the Integration Guide for:</b> onboarding a new relying party</div>
+        </div>
+      </div>
+
+      <hr class="rule">
+<section class="sec" id="1-service-basics">
+<div class="sec-head"><span class="tag">§1</span><h2>Service basics</h2></div>
+<p>Every relying party's development port is also its production port; only the environment name, host binding, database name/password, and public URL differ between the two. All databases can live on one shared database instance, but no two systems ever share a database.</p>
+<p><strong>The browser entry point is the frontend port, not the backend port.</strong> The backend serves JSON view models, not rendered pages — opening the backend port directly gets you JSON, not the login screen.</p>
+<p><strong>Redis (or an equivalent shared cache) is optional.</strong> Without it configured, rate limiters fall back to a per-process in-memory store, which is correct for a single instance. Configure a shared cache only once the identity provider runs more than one process — otherwise the effective rate limit is silently divided by the instance count, since each process is enforcing its own separate counter.</p>
+<p><strong>A no-touch legacy app reached through the gateway pattern</strong> should be addressed through a hostname that isn't a raw loopback IP in development — a browser treats a raw loop-back address and a hostname that resolves to it as different origins for cookie purposes, and getting this wrong produces a session that silently never seeds. That app's own native login paths (staff or guest) stay directly reachable on its own port, completely unaffected by the gateway.</p>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="2-running-it">
+<div class="sec-head"><span class="tag">§2</span><h2>Running it</h2></div>
+<h3 id="development">Development</h3>
+<pre><code>cd backend
+npm install
+cp .env.example .env       # then fill in secrets
+npm run db:migrate         # apply migrations to the development database
+npm run db:seed:dev        # seeds a starter admin account — see the script for the generated credentials
+npm run dev                # starts the backend, and the gateway alongside it
+
+cd ../frontend
+npm install
+npm run dev                # open this — the frontend, not the backend port</code></pre>
+<p>Migrations apply automatically on <code>npm run dev</code>. Production deliberately does not do this — see below.</p>
+<h3 id="production">Production</h3>
+<pre><code>cd backend
+npm run env:verify:prod    # resolves config, runs every production assertion, starts nothing
+npm run build
+npm run db:migrate:prod
+npm run start:prod
+
+cd ../frontend
+npm run build              # the public base path must be set at BUILD time, not at runtime
+npm start</code></pre>
+<p><code>env:verify:prod</code> is the step worth never skipping before trusting a deployed instance. It loads the real configuration module — so every production assertion actually runs — and prints the resolved database, issuer, directory-service settings, and registered clients, without binding a port or touching the database. It never prints a secret value: sensitive settings show as set/unset with a length only. Exit code <code>0</code> means it's safe to start.</p>
+<p>A process manager (PM2 or similar) and a container runtime are both optional — nothing about running the identity provider requires either.</p>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="3-configuration">
+<div class="sec-head"><span class="tag">§3</span><h2>Configuration</h2></div>
+<p><strong>Production reads exactly one environment file and nothing else.</strong> The development environment file is never read in production; a missing production environment file is a hard refusal to start, not a silent fallback. Don't reintroduce a "layered" approach where a production file is loaded on top of a development one — most <code>.env</code> loaders only override the keys the layering file actually names, so any key the production file doesn't mention silently keeps its development value.</p>
+<p><strong>This matters more for the identity provider than for any relying party</strong>, because a misconfigured identity provider that boots successfully — happily, against the wrong database, with a development-looking issuer baked into every token it signs — hands out tokens nothing downstream will recognize as wrong until users start failing to log in elsewhere. Prefer a configuration loader that fails loudly and specifically on a missing or placeholder-looking production-required setting, rather than falling back to a safe-looking default.</p>
+<div class="twrap"><table>
+<thead><tr><th>Variable</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>IDP_ISSUER</code></td><td>The canonical public URL — the <code>iss</code> claim baked into every token. Development typically points at localhost; production must be the real HTTPS origin.</td></tr>
+<tr><td><code>DATABASE_URL</code></td><td>The identity provider's own database. The loader should refuse to boot on an ambient value the environment file itself did not define — see <a href="#7-troubleshooting">§7</a>.</td></tr>
+<tr><td><code>COOKIE_KEYS</code></td><td>Session-cookie signing keys, comma-separated. Rotate by prepending a new key and leaving the old one in place until every live session has re-signed.</td></tr>
+<tr><td><code>TOTP_ENCRYPTION_KEY</code></td><td>Encrypts stored MFA secrets at rest. <strong>Changing it locks every enrolled user out of MFA</strong> — see <a href="#6-backups">§6</a>.</td></tr>
+<tr><td><code>AUDIT_HMAC_KEY</code></td><td>Keys the admin audit hash chain.</td></tr>
+<tr><td>Directory-service variables (e.g. <code>LDAP_*</code>)</td><td>Enable directory-backed authentication. Leave empty for a local-user-store-only deployment.</td></tr>
+<tr><td>Per-relying-party client secrets</td><td>One per registered OIDC client. Production should refuse to start on any development-default secret value.</td></tr>
+<tr><td>A relying party's own runtime secret (e.g. a bridged app's JWT signing secret)</td><td><strong>Must exactly match</strong> that app's own configured secret, or every bridged token is rejected on that app's side.</td></tr>
+<tr><td>A relying party's internal API base URL and key</td><td>Used by the identity provider to call into that app's own internal API — for example, to mint a bridged session or manage role assignments.</td></tr>
+<tr><td>A shared cache URL (e.g. <code>REDIS_URL</code>)</td><td>Optional. Backs a shared rate-limit store across more than one process.</td></tr>
+<tr><td><code>ENABLE_API_DOCS</code></td><td>Whether to expose interactive API documentation in production. Off by default — turn on deliberately, not as a leftover from debugging.</td></tr>
+</tbody></table></div>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="4-signing-keys">
+<div class="sec-head"><span class="tag">§4</span><h2>Signing keys</h2></div>
+<p>Signing keys are stored in the identity provider's own database. Exactly one is active at a time — that's the key used to sign new tokens. The JWKS endpoint publishes the active key <strong>plus</strong> any key retired within an overlap window (roughly the longest token lifetime the provider issues, plus a safety margin), so a token signed moments before a rotation still verifies for its natural lifetime.</p>
+<p>Both operations below should take effect <strong>live</strong>, with no restart required — an identity provider is exactly the kind of shared dependency where a restart-to-rotate cost is unacceptable.</p>
+<p><strong>Rotate</strong> (the routine, scheduled operation): generates a new key, makes it active, and marks the previous one retired. The retired key stays published for the overlap window. This costs nobody a login.</p>
+<p><strong>Withdraw immediately</strong> (the emergency operation): removes a key from the JWKS right away, ahead of its normal overlap window. <strong>Every token still signed with that key stops verifying at once, and every affected user must sign in again.</strong> That's the point — this is the action for a key believed compromised, not for routine housekeeping. Rotate first; withdraw only the key you've already rotated away from, unless you specifically believe the <em>active</em> key itself is compromised.</p>
+<p>Verify what relying parties can actually see at any time by fetching the provider's own JWKS and discovery document directly.</p>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="5-sessions-and-the-audit-chain">
+<div class="sec-head"><span class="tag">§5</span><h2>Sessions and the audit chain</h2></div>
+<p><strong>Sessions.</strong> An admin console should let an operator list live sessions and revoke one — revoking should act on the live session store directly, which has a real consequence for point-in-time restores (see <a href="#6-backups">§6</a>: a restored database reintroduces whatever sessions were live at backup time). A per-user "sign out everywhere" action is a useful minimum for an admin console to expose.</p>
+<p>Give users the same self-service capability for their own account: enrolling MFA, listing and individually revoking their own sessions, reviewing their own sign-in history, and changing their own password if their account isn't sourced from a directory service.</p>
+<p><strong>Audit chain.</strong> Keep the admin audit log hash-chained: each row's hash covers the previous row's, so an edit or deletion anywhere breaks verification from that point on. Run the verification check periodically, both as a script and as a live admin-console action. <strong>A broken chain means rows were altered outside the application — treat that as a security incident, not a data-quality problem.</strong></p>
+<p><strong>Retention.</strong> A background job should periodically purge expired OIDC artifacts and stale sessions, and a separate job should re-sync directory group membership for users with a live session on some regular interval, so a group-membership change takes effect within that interval rather than waiting for the session to naturally expire.</p>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="6-backups">
+<div class="sec-head"><span class="tag">§6</span><h2>Backups</h2></div>
+<p>Every production identity-provider deployment needs a scheduled database backup with a defined retention period, and — just as important — a tested restore procedure, not just a backup file assumed to be good. Offset the backup schedule from other systems' backup jobs on the same host so multiple database dumps aren't competing for the same disk at the same moment.</p>
+<p><strong>Treat any backup or restore script as security-relevant code.</strong> A backup script that silently fails — throws on an unrelated bug before doing any real work, or gets pointed at the wrong database by an environment-loading mistake — can report success while producing nothing useful, for a long time, before anyone notices. After any change to backup tooling, verify a real, restorable file actually lands; never trust an exit code alone.</p>
+<p><strong>The identity provider's own database deserves the platform's most conservative backup posture.</strong> Losing any one relying party's data loses that system; losing the identity provider's database severs every integrated system's authentication path simultaneously.</p>
+<p>Keep any encryption or signing keys used for stored secrets (an MFA-secret encryption key, an audit-chain signing key) somewhere durable and <strong>separate from the backup itself</strong>. A restored database without the original key that encrypted a given column means that data is permanently unrecoverable from the dump alone, no matter how recent or complete it is — a lost MFA-secret encryption key, specifically, means every enrolled user must re-enroll their authenticator from scratch.</p>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="7-troubleshooting">
+<div class="sec-head"><span class="tag">§7</span><h2>Troubleshooting</h2></div>
+<div class="twrap"><table>
+<thead><tr><th>Symptom</th><th>Likely cause and fix</th></tr></thead>
+<tbody>
+<tr><td>The identity provider connects to a database you didn't configure</td><td>A machine-wide <code>DATABASE_URL</code> left over from an unrelated project or trial deployment is silently winning over the service's own environment file. The configuration loader should refuse to boot on an ambient value the environment file did not itself define — check the machine's actual environment variables.</td></tr>
+<tr><td>Everything works, but tokens carry a development-looking issuer</td><td>The service started outside production mode and loaded the development environment file. Run the production config-verification script and check which file it reports reading.</td></tr>
+<tr><td>A bridged relying party rejects a freshly issued token</td><td>That app's configured runtime secret doesn't match what the identity provider is signing with.</td></tr>
+<tr><td>A relying party's callback fails on first login</td><td>Its own cache/queue dependency (Redis, for instance) may be down and its nonce check is fail-closed, or its own group-to-role mapping table has no row for that user's group.</td></tr>
+<tr><td>Every user's MFA suddenly fails</td><td>The MFA-secret encryption key doesn't match the key the secrets were originally encrypted with. Restore the previous key rather than letting users burn through lockout attempts — MFA lockout is real and will lock accounts out further.</td></tr>
+<tr><td>A relying party rejects freshly issued tokens across the board</td><td>A signing key was withdrawn rather than rotated, or that relying party has cached the JWKS response longer than it should. Check which keys are currently published.</td></tr>
+<tr><td>A public/guest flow can't reach an app</td><td>It should be using that app's own native public flow — a guest or public flow is a business flow specific to that app, not an identity-provider flow, and should never be routed through the bridge.</td></tr>
+<tr><td>A path under the portal's own base path 404s in production</td><td>The frontend was built without its production base path set. It's baked in at build time — rebuild, don't just restart.</td></tr>
+<tr><td>The plain framework "start" command serves nothing</td><td>The frontend is a standalone-output build and can't be served that way — use the project's own start script, which runs the standalone launcher.</td></tr>
+</tbody></table></div>
+</section>
+
+<hr class="rule">
+
+    </div>
+  </main>
+</div>
+
+<a href="#top" class="backlink" id="backlink" aria-label="Back to top">↑</a>
+
+<script>
+(function(){
+  var side = document.getElementById('side');
+  var toggle = document.getElementById('navtoggle');
+  if (toggle) {
+    side.classList.add('collapsed');
+    toggle.addEventListener('click', function(){ side.classList.toggle('collapsed'); });
+  }
+
+  var links = Array.prototype.slice.call(document.querySelectorAll('nav.toc a'));
+  var sections = links.map(function(a){
+    var id = a.getAttribute('href').slice(1);
+    return document.getElementById(id);
+  });
+
+  function onScroll(){
+    var y = window.scrollY + 120;
+    var activeIdx = 0;
+    for (var i = 0; i < sections.length; i++){
+      if (sections[i] && sections[i].offsetTop <= y) activeIdx = i;
+    }
+    links.forEach(function(a, i){ a.classList.toggle('active', i === activeIdx); });
+
+    var back = document.getElementById('backlink');
+    if (back) back.classList.toggle('show', window.scrollY > 600);
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+</script>

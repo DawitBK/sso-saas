@@ -1,0 +1,370 @@
+<title>Example Corp SSO — Architecture</title>
+<style>
+<style>
+  :root{
+    --bg:#f6f5f1; --surface:#ffffff; --surface-2:#f0efe9;
+    --ink:#1c2024; --ink-2:#4b555c; --ink-3:#727f86;
+    --border:#dedcd3; --border-2:#cbc9be;
+    --accent:#2a6f74; --accent-ink:#123639; --accent-soft:#e2eeee; --accent-soft-border:#c3dbdc;
+    --code-bg:#12181c; --code-ink:#d8e2e6; --code-border:#232c31;
+    --good:#2f7d4f; --warn:#a2661a; --bad:#a3402f;
+    --shadow: 0 1px 2px rgba(20,20,15,0.04), 0 8px 24px -12px rgba(20,20,15,0.10);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#15181a; --surface:#1b1f22; --surface-2:#202427;
+      --ink:#e7e6e1; --ink-2:#b3b8ba; --ink-3:#838d90;
+      --border:#2c3134; --border-2:#3a4145;
+      --accent:#6fc2c6; --accent-ink:#d3f0f1; --accent-soft:#1c2b2c; --accent-soft-border:#2a3f40;
+      --code-bg:#0d1113; --code-ink:#d8e2e6; --code-border:#242a2d;
+      --good:#5fbf85; --warn:#d69a4e; --bad:#e07b68;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#15181a; --surface:#1b1f22; --surface-2:#202427;
+    --ink:#e7e6e1; --ink-2:#b3b8ba; --ink-3:#838d90;
+    --border:#2c3134; --border-2:#3a4145;
+    --accent:#6fc2c6; --accent-ink:#d3f0f1; --accent-soft:#1c2b2c; --accent-soft-border:#2a3f40;
+    --code-bg:#0d1113; --code-ink:#d8e2e6; --code-border:#242a2d;
+    --good:#5fbf85; --warn:#d69a4e; --bad:#e07b68;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-size:16px; line-height:1.62;
+  }
+  ::selection{ background:var(--accent-soft-border); }
+  h1,h2,h3,h4{
+    font-family:"Source Serif 4","Iowan Old Style", Georgia, serif;
+    color:var(--ink); font-weight:600; text-wrap:balance; line-height:1.22;
+  }
+  a{ color:var(--accent-ink); text-decoration-color:var(--accent-soft-border); text-underline-offset:2px; }
+  a:hover{ text-decoration-color:currentColor; }
+  code, pre, .mono{ font-family:"IBM Plex Mono","SFMono-Regular",Consolas,monospace; }
+  code{ background:var(--surface-2); border:1px solid var(--border); border-radius:4px; padding:0.05em 0.4em; font-size:0.86em; }
+  p code, li code, td code{ white-space:nowrap; }
+
+  /* ---------- shell layout ---------- */
+  .shell{ display:grid; grid-template-columns: 288px minmax(0,1fr); min-height:100vh; }
+  .side{
+    position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+    border-right:1px solid var(--border); background:var(--surface);
+    padding:22px 14px 40px;
+  }
+  .side::-webkit-scrollbar{ width:8px; }
+  .side::-webkit-scrollbar-thumb{ background:var(--border-2); border-radius:8px; }
+  .brand{ display:flex; align-items:baseline; gap:8px; padding:2px 10px 16px; border-bottom:1px solid var(--border); margin-bottom:10px;}
+  .brand .mark{ font-family:"Source Serif 4",serif; font-weight:700; font-size:1.05rem; color:var(--accent-ink); }
+  .brand .sub{ font-size:0.7rem; color:var(--ink-3); text-transform:uppercase; letter-spacing:.08em; }
+  nav.toc{ display:flex; flex-direction:column; gap:1px; }
+  nav.toc a{
+    display:block; padding:6px 10px; border-radius:6px; font-size:0.83rem;
+    color:var(--ink-2); text-decoration:none; white-space:normal;
+  }
+  nav.toc a .n{ color:var(--ink-3); font-variant-numeric:tabular-nums; margin-right:6px; font-size:0.78rem; }
+  nav.toc a:hover{ background:var(--surface-2); color:var(--ink); }
+  nav.toc a.active{ background:var(--accent-soft); color:var(--accent-ink); font-weight:600; }
+  .side-foot{ margin-top:18px; padding:10px 10px 0; border-top:1px solid var(--border); font-size:0.72rem; color:var(--ink-3); }
+
+  .navtoggle{ display:none; }
+
+  main{ min-width:0; }
+  .wrap{ max-width:840px; margin:0 auto; padding:56px 32px 120px; }
+
+  /* ---------- cover ---------- */
+  .cover{ margin-bottom:44px; }
+  .cover .eyebrow{
+    display:inline-flex; align-items:center; gap:8px; font-size:0.74rem; letter-spacing:.10em; text-transform:uppercase;
+    color:var(--accent-ink); background:var(--accent-soft); border:1px solid var(--accent-soft-border);
+    padding:4px 10px; border-radius:20px; margin-bottom:18px;
+  }
+  .cover h1{ font-size:2.6rem; margin:0 0 10px; letter-spacing:-.01em; }
+  .cover .dek{ font-size:1.12rem; color:var(--ink-2); max-width:62ch; margin:0 0 22px; }
+  .meta-row{ display:flex; flex-wrap:wrap; gap:10px 26px; padding:16px 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); margin-bottom:22px;}
+  .meta-item{ font-size:0.82rem; color:var(--ink-2); }
+  .meta-item b{ color:var(--ink); font-weight:600; }
+  .cover p.lead{ font-size:1rem; color:var(--ink-2); }
+  .cover p.lead strong{ color:var(--ink); }
+
+  .refs-table{ margin-top:10px; }
+
+  /* ---------- sections ---------- */
+  .sec{ padding-top:64px; margin-top:-64px; }
+  .sec-head{ display:flex; align-items:baseline; gap:12px; margin: 0 0 18px; }
+  .tag{
+    font-family:"IBM Plex Mono",monospace; font-size:0.76rem; color:var(--accent-ink);
+    background:var(--accent-soft); border:1px solid var(--accent-soft-border); border-radius:5px;
+    padding:2px 7px; flex:none; transform:translateY(-2px);
+  }
+  h2{ font-size:1.56rem; margin:0; }
+  h3{ font-size:1.18rem; margin:30px 0 10px; }
+  h4{ font-size:1.0rem; margin:20px 0 8px; color:var(--ink); }
+  .sec > hr, hr.rule{ border:none; border-top:1px solid var(--border); margin:52px 0; }
+
+  p{ margin: 0 0 14px; }
+  ul, ol{ margin:0 0 14px; padding-left:1.35em; }
+  li{ margin-bottom:6px; }
+  li::marker{ color:var(--ink-3); }
+
+  blockquote.callout{
+    margin:18px 0; padding:14px 18px; border-left:3px solid var(--accent); background:var(--accent-soft);
+    border-radius:0 8px 8px 0; color:var(--ink-2); font-size:0.96rem;
+  }
+  blockquote.callout p{ margin:0 0 8px; }
+  blockquote.callout p:last-child{ margin-bottom:0; }
+  blockquote.callout strong{ color:var(--ink); }
+
+  .twrap{ overflow-x:auto; margin:16px 0 22px; border:1px solid var(--border); border-radius:10px; box-shadow:var(--shadow); }
+  table{ border-collapse:collapse; width:100%; font-size:0.86rem; background:var(--surface); }
+  thead th{
+    text-align:left; font-family:"IBM Plex Mono",monospace; font-size:0.72rem; letter-spacing:.04em; text-transform:uppercase;
+    color:var(--ink-3); background:var(--surface-2); padding:10px 14px; border-bottom:1px solid var(--border); white-space:nowrap;
+  }
+  td{ padding:10px 14px; border-bottom:1px solid var(--border); vertical-align:top; color:var(--ink-2); }
+  tr:last-child td{ border-bottom:none; }
+  td:first-child{ color:var(--ink); font-weight:600; white-space:nowrap; }
+  td b, td strong{ color:var(--ink); }
+
+  pre{
+    background:var(--code-bg); color:var(--code-ink); border:1px solid var(--code-border);
+    border-radius:10px; padding:16px 18px; overflow-x:auto; font-size:0.82rem; line-height:1.58;
+    margin:14px 0 20px; box-shadow:var(--shadow);
+  }
+  pre code{ background:none; border:none; padding:0; color:inherit; }
+
+  .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0 24px; }
+  @media (max-width:720px){ .grid-3{ grid-template-columns:1fr; } }
+  .sys-card{ border:1px solid var(--border); border-radius:12px; padding:16px 16px 14px; background:var(--surface); box-shadow:var(--shadow); }
+  .sys-card .name{ font-family:"Source Serif 4",serif; font-weight:700; font-size:1.08rem; margin-bottom:2px; }
+  .sys-card .role{ font-size:0.78rem; color:var(--ink-3); margin-bottom:10px; }
+  .sys-card dl{ margin:0; display:grid; grid-template-columns:auto 1fr; gap:4px 10px; font-size:0.8rem; }
+  .sys-card dt{ color:var(--ink-3); }
+  .sys-card dd{ margin:0; color:var(--ink); font-family:"IBM Plex Mono",monospace; text-align:right; }
+
+  figure.diagram{ margin:20px 0 26px; padding:18px 18px 10px; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); }
+  figure.diagram svg{ width:100%; height:auto; display:block; color:var(--ink-2); }
+  figure.diagram pre.mermaid{ margin:0; box-shadow:none; }
+  figure.diagram figcaption{ font-size:0.8rem; color:var(--ink-3); margin-top:8px; padding-top:8px; border-top:1px solid var(--border); }
+
+  .pill{ display:inline-block; font-size:0.72rem; padding:1px 8px; border-radius:20px; font-weight:600; }
+  .pill.good{ background:color-mix(in srgb, var(--good) 16%, transparent); color:var(--good); }
+  .pill.warn{ background:color-mix(in srgb, var(--warn) 16%, transparent); color:var(--warn); }
+  .pill.bad{ background:color-mix(in srgb, var(--bad) 16%, transparent); color:var(--bad); }
+
+  .backlink{ position:fixed; right:22px; bottom:22px; background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow);
+    border-radius:999px; width:40px; height:40px; display:flex; align-items:center; justify-content:center; color:var(--ink-2);
+    text-decoration:none; opacity:0; pointer-events:none; transition:opacity .18s ease; font-size:1.1rem; }
+  .backlink.show{ opacity:1; pointer-events:auto; }
+
+  footer.doc-foot{ margin-top:60px; padding-top:24px; border-top:1px solid var(--border); font-size:0.84rem; color:var(--ink-3); font-style:italic; }
+
+  dl.glossary{ display:grid; grid-template-columns:max-content 1fr; gap:6px 16px; }
+  dl.glossary dt{ font-weight:600; color:var(--ink); font-family:"IBM Plex Mono",monospace; font-size:0.86rem; }
+  dl.glossary dd{ margin:0 0 8px; color:var(--ink-2); }
+
+  @media (max-width:960px){
+    .shell{ grid-template-columns:1fr; }
+    .side{ position:relative; height:auto; top:0; border-right:none; border-bottom:1px solid var(--border); }
+    .side.collapsed nav.toc, .side.collapsed .side-foot{ display:none; }
+    .navtoggle{ display:flex; align-items:center; gap:8px; width:100%; background:var(--surface-2); border:1px solid var(--border);
+      border-radius:8px; padding:9px 12px; font-size:0.82rem; color:var(--ink); cursor:pointer; margin-bottom:4px; }
+    .wrap{ padding:36px 20px 90px; }
+    .cover h1{ font-size:2rem; }
+  }
+  @media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto; } .backlink{ transition:none; } }
+
+  ul.checklist{ list-style:none; padding-left:0.2em; }
+  ul.checklist li{ position:relative; padding-left:1.6em; }
+  ul.checklist li::before{ content:"☐"; position:absolute; left:0; top:0; color:var(--ink-3); }
+</style>
+<div class="shell">
+  <aside class="side" id="side">
+    <div class="brand"><span class="mark">Example Corp SSO</span><span class="sub">Architecture</span></div>
+    <button class="navtoggle" id="navtoggle" type="button">☰ Contents</button>
+    <nav class="toc" id="toc">
+      <a href="#top"><span class="n">—</span>Overview</a>
+      <a href="#1-the-one-idea-that-makes-this-simple-two-identity-planes-not-two-systems"><span class="n">01</span>Two identity planes</a>
+      <a href="#2-does-oidc-lock-you-into-one-language"><span class="n">02</span>Does OIDC lock you in?</a>
+      <a href="#3-what-the-identity-provider-is-and-what-it-deliberately-is-not"><span class="n">03</span>What the IdP is / isn't</a>
+      <a href="#4-the-two-integration-patterns"><span class="n">04</span>Two integration patterns</a>
+      <a href="#5-roles-apps-keep-their-own-the-idp-only-supplies-identity-and-groups"><span class="n">05</span>Roles &amp; groups</a>
+      <a href="#6-component-and-topology-map"><span class="n">06</span>Component &amp; topology map</a>
+      <a href="#7-design-decisions-and-known-seams"><span class="n">07</span>Design decisions &amp; seams</a>
+    </nav>
+    <div class="side-foot">Part of the SSO documentation set<br>See also: Integration Guide · Operations</div>
+  </aside>
+
+  <main>
+    <div class="wrap" id="top">
+
+      <div class="cover">
+        <span class="eyebrow">SSO documentation · Architecture</span>
+        <h1>Example Corp SSO — Architecture</h1>
+        <p class="dek">How the identity provider actually fits together: public vs. authenticated access, internal vs. external users, legacy-app integration, and where the seams are.</p>
+        <div class="meta-row">
+          <div class="meta-item"><b>Read this for:</b> the reasoning behind the design</div>
+          <div class="meta-item"><b>Read the Integration Guide for:</b> the step-by-step for onboarding an app</div>
+          <div class="meta-item"><b>Read Operations for:</b> running and deploying the identity provider itself</div>
+        </div>
+        <p class="lead">This document answers the "how does this actually fit together" questions: public vs. authenticated access, internal vs. external users, legacy (PHP / plain-JS) integration, whether a gateway/shell or microservices are needed, and where the seams are.</p>
+      </div>
+
+      <hr class="rule">
+<section class="sec" id="1-the-one-idea-that-makes-this-simple-two-identity-planes-not-two-systems">
+<div class="sec-head"><span class="tag">§1</span><h2>The one idea that makes this simple: two identity planes, not two systems</h2></div>
+<p>This is <strong>not</strong> a microservices split, and it does <strong>not</strong> force every request through a front door. Each application stays exactly what it is today — a self-contained system with its own database. One shared service is added — the identity provider (IdP) — and it's applied <strong>selectively</strong>.</p>
+<p>Every application already serves two kinds of caller. Keep them separate at the <em>authentication</em> level, not the <em>deployment</em> level:</p>
+<div class="twrap"><table>
+<thead><tr><th>Plane</th><th>Who</th><th>How they authenticate</th><th>Touches the IdP?</th></tr></thead>
+<tbody>
+<tr><td><strong>Internal</strong></td><td>Staff / employees</td><td>SSO via the IdP (OIDC, or a token bridge for a legacy app)</td><td>Yes</td></tr>
+<tr><td><strong>External</strong></td><td>Guests, external document signers, anyone verifying a public link</td><td>Each app's own native or public flow — email+OTP, a signed link, or no login at all</td><td><strong>No</strong></td></tr>
+</tbody></table></div>
+<p><strong>Rule of thumb:</strong> SSO is opt-in per <em>surface</em>, never global. If an endpoint is for external users or the general public, it does <strong>not</strong> go through the IdP — it keeps whatever it does today. A guest check-in flow or a public document-verification page needs no account and should never be routed through the identity provider.</p>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="2-does-oidc-lock-you-into-one-language">
+<div class="sec-head"><span class="tag">§2</span><h2>Does OIDC lock you into one language?</h2></div>
+<p>OpenID Connect / OAuth 2.0 is a <strong>wire protocol over plain HTTP</strong>, not a library. The IdP publishes a standard discovery document (<code>/.well-known/openid-configuration</code>) and a JWKS. <strong>Any</strong> language that can make an HTTPS call and verify an RS256 JWT is a first-class client:</p>
+<div class="twrap"><table>
+<thead><tr><th>Stack</th><th>Mature OIDC client</th></tr></thead>
+<tbody>
+<tr><td>PHP</td><td><code>jumbojett/OpenID-Connect-PHP</code>, <code>league/oauth2-client</code></td></tr>
+<tr><td>Plain JS / SPA</td><td><code>oidc-client-ts</code> (browser), or the auth-code flow by hand (~40 lines)</td></tr>
+<tr><td>Node</td><td><code>openid-client</code>, or a hand-rolled flow</td></tr>
+<tr><td>.NET / Java / Python / Go</td><td>first-party OIDC middleware in every mainstream framework</td></tr>
+</tbody></table></div>
+<p>Choosing a self-hosted, standards-based OIDC provider is precisely what keeps a legacy PHP app or a plain-JS app integratable — a proprietary vendor SDK is the thing that would actually lock you in. A spec-compliant provider speaks the same protocol every stack already supports.</p>
+<p>If an existing system genuinely <em>cannot</em> be made an OIDC client (it can't add a login redirect, can't verify a JWT), it can still integrate via the <strong>token bridge</strong> pattern (<a href="#4-the-two-integration-patterns">§4</a>) with zero changes to its own code.</p>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="3-what-the-identity-provider-is-and-what-it-deliberately-is-not">
+<div class="sec-head"><span class="tag">§3</span><h2>What the identity provider is, and what it deliberately is not</h2></div>
+<p>The IdP plays three roles. Only the first is mandatory:</p>
+<ol>
+<li><strong>Authorization server (mandatory).</strong> Issues identity — <code>/authorize</code>, <code>/token</code>, <code>/jwks</code>, <code>/userinfo</code>, <code>/session/end</code>, plus the login/consent UI. This is the SSO backbone: sign in once, reach every integrated app for the lifetime of that session.</li>
+<li><strong>A real portal frontend, not just an API.</strong> A launcher page greets the signed-in user and opens each app, reusing the existing session. The IdP is not headless — it has real login, consent, portal, and admin pages, served by its own frontend.</li>
+<li><strong>A same-origin gateway for no-touch apps (optional, per app).</strong> For an app that cannot be modified at all, a small reverse proxy serves that app's frontend and proxies its API on one origin, so a bridged session survives normal cookie same-site rules with zero changes to the target app.</li>
+</ol>
+<p>What the IdP is <strong>not</strong>, on purpose:</p>
+<ul>
+<li><strong>Not a mandatory reverse proxy in front of every app.</strong> Each app stays independently reachable on its own address. This is <em>why</em> public routes and external users keep working unmodified — there's no front door forcing authentication onto a route that's meant to stay open.</li>
+<li><strong>Not a micro-frontend shell that embeds other apps' UIs.</strong> Each app keeps its own frontend. The portal <em>links</em> to them; it does not host them.</li>
+</ul>
+<h3 id="why-not-a-single-shell-in-front-of-everything">Why not a single shell in front of everything?</h3>
+<p>A single shell proxying every app under one domain sounds tidy but fights three real constraints: public routes would have to be carefully carved out of a front door that otherwise wants to authenticate everything (easy to get wrong, easy to leak); legacy apps in older stacks don't slot cleanly into a micro-frontend host or a base-path rewrite; and one shell in front of everything becomes a single choke point that has to scale and version in lockstep with every app behind it.</p>
+<p>The model actually used — <strong>a portal, each app on its own frontend, standard OIDC redirects between them</strong> — is how most large identity platforms are organized: a central login/portal, each app on its own origin, SSO via redirect. It's lower-risk and friendlier to both legacy apps and public routes than a universal front-door shell.</p>
+<p><strong>Routing in production is ordinary infrastructure, not application logic</strong> — the reverse proxy routes, the IdP does identity, and the two stay separate concerns. Path-based routing on one shared reverse-proxy host (<code>/sso</code>, <code>/app-one</code>, <code>/app-two</code>, ...) is a reasonable choice when you want one certificate and one vhost rather than one per system; the cost is that each frontend must be <em>built</em> knowing its own base path, since that's baked into the bundle at build time — changing it means a rebuild, not a restart.</p>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="4-the-two-integration-patterns">
+<div class="sec-head"><span class="tag">§4</span><h2>The two integration patterns</h2></div>
+<h3 id="a-oidc-client-preferred-any-language">A. OIDC client — preferred, any language</h3>
+<p>Use when you can add a "Sign in with SSO" redirect to the app — you control its login, even if it's written in an older stack.</p>
+<pre><code>app → redirect to IdP /authorize → user logs in once → IdP redirects back with a code
+    → app exchanges the code at /token → gets an id_token → maps identity to its own roles</code></pre>
+<p>A PHP app can implement this in about fifteen lines using an existing OIDC client library.</p>
+<h3 id="b-token-bridge-no-touch-for-apps-you-cannot-modify">B. Token bridge — no-touch, for apps you cannot modify</h3>
+<p>Use when you must <strong>not</strong> change the app's own authentication. After login at the IdP, a small IdP-side adapter provisions the app's own user record and mints a token the app already accepts natively — its own JWT format, a session row, a signed cookie, whatever it already trusts.</p>
+<pre><code>IdP login → bridge: provision the app's own user + mint the app's native token
+          → deliver to the browser → the app verifies it exactly as if it issued it itself</code></pre>
+<p><strong>Zero code changes to the target app.</strong> A legacy application whose session mechanism can't be touched gets its own bridge adapter, modeled on the same shape as any other bridge integration.</p>
+<p><strong>Decision guide:</strong> can you add a login redirect / verify a JWT in the app? Use Pattern A. If genuinely not, use Pattern B. Both leave external/guest/public flows alone entirely.</p>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="5-roles-apps-keep-their-own-the-idp-only-supplies-identity-and-groups">
+<div class="sec-head"><span class="tag">§5</span><h2>Roles: apps keep their own; the IdP only supplies identity and groups</h2></div>
+<p>The IdP is intentionally <strong>role-agnostic</strong>. Each integrated app's own role system stays embedded in that app — that's the design, not a gap to close later:</p>
+<ul>
+<li>The IdP issues <code>sub</code>, <code>email</code>, <code>email_verified</code>, name fields, and a group-membership claim.</li>
+<li>Each integrated app maps groups to its own roles via its own group-to-role mapping table (or asks the IdP to resolve a coarse, app-specific <code>roles</code> claim for it — see the integration guide).</li>
+<li>External/guest roles are <strong>never</strong> assigned by the IdP — they come entirely from the app's own external flow.</li>
+</ul>
+<p>The IdP authenticates <em>who you are</em>; each app decides <em>what you may do</em>, exactly as it would without SSO in the picture at all.</p>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="6-component-and-topology-map">
+<div class="sec-head"><span class="tag">§6</span><h2>Component and topology map</h2></div>
+<pre><code>                         External / public plane (NO IdP)
+   guest ── an app's native login (email/OTP) ───────▶ that app
+   signer ─ a signed document link ───────────────────▶ that app
+   public ─ a public verification page (no auth) ─────▶ that app
+
+                         Internal plane (SSO)
+   staff ─▶ the identity provider  (OIDC provider + portal)
+              │  OIDC (RS256/JWKS)         token bridge (app-native)
+              ├────────────▶ an OIDC-client app   ├────────────▶ a no-touch legacy app
+              └────────────▶ future OIDC app      └────────────▶ future no-touch app
+   identity source: your directory service (e.g. LDAP/AD) → a local user-store fallback
+   store: the IdP's own database (separate from every relying party; no app shares a database)</code></pre>
+<p>Every system's development port is also its production port; only the environment name, host binding, database name/password, and public URL differ between the two. Each integrated system owns its own database — no system shares a database with another, including the identity provider itself.</p>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="7-design-decisions-and-known-seams">
+<div class="sec-head"><span class="tag">§7</span><h2>Design decisions and known seams</h2></div>
+<p>A few decisions worth calling out explicitly because they shape how a new integration should be designed:</p>
+<ul>
+<li><strong>The same-origin gateway is additive, never exclusive.</strong> A no-touch legacy app integrated via the token bridge stays directly reachable on its own address too — the gateway is one more door in, not the only one, and the app's own native login (staff or guest) is left completely untouched.</li>
+<li><strong>Auto-consent for first-party, trusted clients</strong> makes moving between integrated apps seamless — no repeated consent screen for an app the organization itself owns and operates.</li>
+<li><strong>The identity provider is protocol-universal but easiest to prove out with a Node/Next.js client first</strong> — a non-Node or legacy stack integrates identically by protocol, but pilot the first such integration end to end rather than assuming it "should just work" without ever exercising it.</li>
+<li><strong>No micro-frontend shell, by design</strong> (<a href="#3-what-the-identity-provider-is-and-what-it-deliberately-is-not">§3</a>). The gateway pattern exists specifically for apps that can't be touched; an app you can modify keeps its own frontend and simply adds a login redirect.</li>
+<li><strong>Scale considerations worth planning for early</strong>: session and one-time-handoff-code storage should live in a shared store (not in-process memory) the moment more than one instance of the IdP backend runs concurrently, and JWKS rotation should take effect live, without requiring a restart, so a key rotation never has an availability cost.</li>
+</ul>
+<p>See <code>SSO-INTEGRATION-GUIDE.md</code> for adding a new application, and <code>SSO-OPERATIONS.md</code> for running and deploying the identity provider itself.</p>
+</section>
+
+<hr class="rule">
+
+    </div>
+  </main>
+</div>
+
+<a href="#top" class="backlink" id="backlink" aria-label="Back to top">↑</a>
+
+<script>
+(function(){
+  var side = document.getElementById('side');
+  var toggle = document.getElementById('navtoggle');
+  if (toggle) {
+    side.classList.add('collapsed');
+    toggle.addEventListener('click', function(){ side.classList.toggle('collapsed'); });
+  }
+
+  var links = Array.prototype.slice.call(document.querySelectorAll('nav.toc a'));
+  var sections = links.map(function(a){
+    var id = a.getAttribute('href').slice(1);
+    return document.getElementById(id);
+  });
+
+  function onScroll(){
+    var y = window.scrollY + 120;
+    var activeIdx = 0;
+    for (var i = 0; i < sections.length; i++){
+      if (sections[i] && sections[i].offsetTop <= y) activeIdx = i;
+    }
+    links.forEach(function(a, i){ a.classList.toggle('active', i === activeIdx); });
+
+    var back = document.getElementById('backlink');
+    if (back) back.classList.toggle('show', window.scrollY > 600);
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+</script>

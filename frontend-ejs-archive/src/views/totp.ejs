@@ -1,0 +1,12 @@
+<%- include('head', { title: 'Verification code' }) %>
+  <h2>Two-factor verification</h2>
+  <p class="sub">Enter the 6-digit code from your authenticator app to continue to <strong><%= clientName %></strong>.</p>
+  <% if (error) { %><div class="error"><%= error %></div><% } %>
+  <form method="post" action="/interaction/<%= uid %>/totp" autocomplete="off">
+    <input type="hidden" name="csrf" value="<%= csrf %>" />
+    <label for="code">Authenticator code</label>
+    <input id="code" name="code" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" required autofocus
+           placeholder="000000" style="letter-spacing:.4em; text-align:center; font-size:18px; font-family:ui-monospace,monospace;" />
+    <button type="submit">Verify &amp; continue</button>
+  </form>
+<%- include('foot') %>

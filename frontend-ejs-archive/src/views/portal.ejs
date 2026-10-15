@@ -1,0 +1,127 @@
+<%- include('head', { title: 'Your apps' }) %>
+<style>
+  /* Override head.ejs body centering for full-page portal layout */
+  body { display:block; align-items:unset; justify-content:unset; padding:0; background:var(--bg); }
+  .card { display:none; }
+  /* Hide the theme selector from head.ejs (it's fixed top-right) - portal uses its own */
+  .theme-selector { display:none !important; }
+  .portal-layout { display:flex; min-height:100vh; width:100%; }
+  .portal-brand-panel { width:380px; flex-shrink:0; background:#0d0f1a; border-right:1px solid rgba(255,255,255,0.06); padding:40px 36px; display:flex; flex-direction:column; justify-content:space-between; }
+  .portal-brand-panel .logo { display:flex; align-items:center; gap:12px; }
+  .portal-brand-panel .logo .dot { width:40px; height:40px; border-radius:10px; background:var(--brand); display:grid; place-items:center; font-weight:700; font-size:18px; color:var(--brand-ink); }
+  .portal-brand-panel .logo .text h2 { font-size:16px; font-weight:700; color:#f1f5f9; margin:0; letter-spacing:-0.02em; }
+  .portal-brand-panel .logo .text p { font-size:11px; color:#64748b; margin:2px 0 0; }
+  .portal-brand-panel .hero { margin-top:60px; }
+  .portal-brand-panel .hero h1 { font-size:26px; font-weight:700; color:#e2e8f0; line-height:1.3; letter-spacing:-0.03em; margin:0 0 12px; }
+  .portal-brand-panel .hero p { font-size:14px; color:#94a3b8; line-height:1.6; margin:0; }
+  .portal-brand-panel .hero .features { margin-top:32px; display:flex; flex-direction:column; gap:14px; }
+  .portal-brand-panel .hero .features .feat { display:flex; align-items:center; gap:10px; }
+  .portal-brand-panel .hero .features .feat .dot { width:8px; height:8px; border-radius:50%; background:var(--brand); flex-shrink:0; }
+  .portal-brand-panel .hero .features .feat span { font-size:13px; color:#94a3b8; }
+  .portal-brand-panel .footer { font-size:11px; color:#334155; }
+  .portal-main { flex:1; padding:40px 48px; overflow-y:auto; background:var(--bg); }
+  .portal-main .top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:40px; gap:16px; flex-wrap:wrap; }
+  .portal-main .top-bar .greeting h1 { font-size:22px; font-weight:700; color:var(--ink); margin:0; letter-spacing:-0.02em; }
+  .portal-main .top-bar .greeting p { font-size:13px; color:var(--muted); margin:4px 0 0; }
+  .portal-main .top-bar .actions { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .portal-main .top-bar .actions .portal-action-btn { font-size:13px; font-weight:600; color:var(--brand); text-decoration:none; padding:8px 16px; border-radius:8px; border:1px solid var(--border); background:var(--card); cursor:pointer; transition:all .12s ease; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center; height:38px; }
+  .portal-main .top-bar .actions .portal-action-btn:hover { border-color:var(--brand); filter:brightness(1.05); }
+  .portal-main .top-bar .actions .sign-out-form { display:contents; }
+  .portal-main .top-bar .actions .sign-out-btn { color:var(--danger); border-color:var(--danger-border); background:var(--danger-bg); }
+  .portal-main .top-bar .actions .sign-out-btn:hover { background:var(--danger); color:#ffffff; border-color:var(--danger); }
+  .portal-main .section-title { font-size:13px; font-weight:600; color:var(--muted); margin-bottom:16px; text-transform:uppercase; letter-spacing:0.06em; }
+
+  /* Muted texts slightly higher contrast in light mode */
+  :root[data-theme="light"] .portal-main .top-bar .greeting p,
+  :root[data-theme="light"] .portal-main .section-title {
+    color: #475569 !important;
+  }
+
+  /* Inline theme selector in portal actions bar */
+  .portal-theme-selector { display:flex; align-items:center; gap:6px; padding:6px 10px; border-radius:8px; border:1px solid var(--border); background:var(--card); height:38px; }
+  .portal-theme-selector .theme-dot { width:16px; height:16px; border-radius:50%; cursor:pointer; transition:all 0.12s ease; border:2px solid transparent; padding:0; margin:0; }
+  .portal-theme-selector .theme-dot:hover { opacity:0.8; transform:scale(1.1); }
+  .portal-theme-selector .theme-dot.light { background:#ffffff; border-color:#cbd5e1; }
+  .portal-theme-selector .theme-dot.dark-black { background:#0a0a0a; border-color:#333; }
+  .portal-theme-selector .theme-dot.dark-blue { background:#0a1628; border-color:#1e3a5f; }
+  :root[data-theme="light"] .portal-theme-selector .theme-dot.light { box-shadow: 0 0 0 2px var(--card), 0 0 0 3px #94a3b8; }
+  :root[data-theme="dark-black"] .portal-theme-selector .theme-dot.dark-black { box-shadow: 0 0 0 2px var(--card), 0 0 0 3px #64748b; }
+  :root[data-theme="dark-blue"] .portal-theme-selector .theme-dot.dark-blue { box-shadow: 0 0 0 2px var(--card), 0 0 0 3px #6366f1; }
+  /* Vertical list layout (as before) */
+  .portal-main .apps-list { display:flex; flex-direction:column; gap:10px; margin-top:8px; }
+  .portal-main .app-item { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border:1px solid var(--border); border-radius:12px; background:var(--card); text-decoration:none; color:var(--ink); transition:border-color .12s ease; }
+  .portal-main .app-item:hover { border-color:var(--brand); }
+  .portal-main .app-item .app-info { display:flex; flex-direction:column; gap:2px; }
+  .portal-main .app-item .app-info .name { font-weight:600; font-size:14px; color:var(--ink); }
+  .portal-main .app-item .app-info .desc { font-size:12px; color:var(--muted); }
+  .portal-main .app-item .app-status { font-size:12px; font-weight:600; color:var(--brand); }
+  .portal-main .app-item.disabled { opacity:0.5; pointer-events:none; }
+  .portal-main .app-item.disabled .app-status { color:var(--muted); }
+  @media (max-width:768px) {
+    .portal-brand-panel { display:none; }
+    .portal-main { padding:24px; }
+  }
+</style>
+<div class="portal-layout">
+  <!-- Left brand panel (matching DMS login page) -->
+  <div class="portal-brand-panel">
+    <div class="logo">
+      <div class="dot">K</div>
+      <div class="text">
+        <h2>Example Corp Identity</h2>
+        <p>Single sign-on</p>
+      </div>
+    </div>
+    <div class="hero">
+      <h1>Your applications,<br>one secure gateway.</h1>
+      <p>Access all your enterprise applications with a single sign-in. No more remembering multiple passwords.</p>
+      <div class="features">
+        <div class="feat"><span class="dot"></span><span>Unified identity across all systems</span></div>
+        <div class="feat"><span class="dot"></span><span>OpenID Connect &amp; OAuth 2.0 secured</span></div>
+        <div class="feat"><span class="dot"></span><span>Session management &amp; audit logging</span></div>
+        <div class="feat"><span class="dot"></span><span>Multi-factor authentication ready</span></div>
+      </div>
+    </div>
+    <div class="footer">© Example Corp · Secured by OpenID Connect</div>
+  </div>
+
+  <!-- Main content -->
+  <div class="portal-main">
+    <div class="top-bar">
+      <div class="greeting">
+        <h1>Welcome, <%= userName %></h1>
+        <p><%= userEmail %></p>
+      </div>
+      <div class="actions">
+        <% if (isAdmin) { %>
+          <a href="/admin" class="portal-action-btn">Admin Console</a>
+        <% } %>
+        <a href="/portal/security" class="portal-action-btn">Security Settings</a>
+        <form method="post" action="/portal/logout" class="sign-out-form">
+          <input type="hidden" name="csrf" value="<%= csrf %>" />
+          <button type="submit" class="portal-action-btn sign-out-btn">Sign out</button>
+        </form>
+        <div class="portal-theme-selector">
+          <button type="button" class="theme-dot light" onclick="__kgSetTheme('light')" aria-label="Light theme" title="Light"></button>
+          <button type="button" class="theme-dot dark-black" onclick="__kgSetTheme('dark-black')" aria-label="Black theme" title="Black"></button>
+          <button type="button" class="theme-dot dark-blue" onclick="__kgSetTheme('dark-blue')" aria-label="Blue theme" title="Blue"></button>
+        </div>
+      </div>
+    </div>
+
+    <p class="section-title">Your Applications</p>
+    <div class="apps-list">
+      <% apps.forEach(function(a){ %>
+        <% /* Skip Retail OS */ if (a.name === 'Retail OS') return; %>
+        <a class="app-item<%= a.mode === 'Soon' ? ' disabled' : '' %>" href="<%= a.url %>">
+          <div class="app-info">
+            <span class="name"><%= a.name %></span>
+            <span class="desc"><%= a.mode === 'Soon' ? 'Coming soon' : 'Click to open' %></span>
+          </div>
+          <span class="app-status"><%= a.mode %> →</span>
+        </a>
+      <% }); %>
+    </div>
+  </div>
+</div>
+<%- include('foot') %>

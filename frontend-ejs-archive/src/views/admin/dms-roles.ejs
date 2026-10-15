@@ -1,0 +1,27 @@
+<%- include('head', { title: 'DMS Roles', adminEmail }) %>
+  <h1>DMS Roles</h1>
+  <p class="sub" style="margin:0 0 20px;">
+    Default permissions per DMS (EDAMS) role — tenant <code class="dn"><%= tenant %></code>. Changes here affect
+    every user with this role who has no per-user override (set on that user's own page).
+  </p>
+  <div class="card">
+    <% if (error) { %>
+      <p class="sub" style="margin:0; color:#b91c1c;"><%= error %></p>
+    <% } else if (roles.length === 0) { %>
+      <p class="muted">No roles found.</p>
+    <% } else { %>
+    <table>
+      <thead><tr><th>Role</th><th>Description</th><th></th></tr></thead>
+      <tbody>
+        <% roles.forEach(function(r){ %>
+        <tr>
+          <td><strong><%= r.name %></strong></td>
+          <td class="muted"><%= r.description || '—' %></td>
+          <td style="text-align:right;"><a class="link" href="/admin/dms-roles/detail?roleId=<%= encodeURIComponent(r.id) %>">Edit permissions →</a></td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+<%- include('foot') %>

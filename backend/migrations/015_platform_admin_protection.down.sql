@@ -1,0 +1,13 @@
+DROP TRIGGER IF EXISTS idp_platform_admin_guard_users ON idp_users;
+DROP TRIGGER IF EXISTS idp_platform_admin_guard_groups ON idp_user_groups;
+DROP FUNCTION IF EXISTS idp_platform_admin_guard();
+DROP FUNCTION IF EXISTS platform_vault_lock();
+DROP FUNCTION IF EXISTS platform_vault_unlock(text, integer);
+DROP FUNCTION IF EXISTS platform_vault_is_unlocked();
+DROP FUNCTION IF EXISTS platform_vault_failure_count();
+DROP TABLE IF EXISTS platform_vault_log;
+DROP TABLE IF EXISTS platform_vault_unlocked;
+DROP TABLE IF EXISTS platform_vault;
+DROP SEQUENCE IF EXISTS platform_vault_failures;
+DROP INDEX IF EXISTS idp_users_platform_admin_idx;
+ALTER TABLE idp_users DROP COLUMN IF EXISTS is_platform_admin;

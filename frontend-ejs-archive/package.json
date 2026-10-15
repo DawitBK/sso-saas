@@ -1,0 +1,27 @@
+{
+  "name": "@examplecorp/sso-frontend",
+  "version": "1.0.0",
+  "description": "Example Corp SSO browser entry — renders EJS UI from backend view models; proxies OIDC/API to 7300.",
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx --watch src/server.ts",
+    "build": "tsc && npm run copy:views",
+    "copy:views": "node -e \"const fs=require('fs');fs.rmSync('dist/views',{recursive:true,force:true});fs.cpSync('src/views','dist/views',{recursive:true})\"",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "ejs": "^3.1.10",
+    "express": "^5.0.1",
+    "http-proxy-middleware": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/ejs": "^3.1.5",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}

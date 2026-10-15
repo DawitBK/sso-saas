@@ -1,0 +1,45 @@
+<%- include('head', { title: 'Signing keys', adminEmail }) %>
+  <div style="display:flex; align-items:center; justify-content:space-between;">
+    <div>
+      <h1>JWKS signing keys</h1>
+      <p class="sub" style="margin:0 0 20px;">The newest active key signs all tokens; older active keys stay published so already-issued tokens keep verifying. Retire old keys once past every token's lifetime.</p>
+    </div>
+    <form method="post" action="/admin/keys/rotate">
+      <input type="hidden" name="csrf" value="<%= csrf %>" />
+      <button class="btn" type="submit">Rotate — generate new key</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead><tr><th>kid</th><th>Created</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        <% keys.forEach(function(k, i){ %>
+        <tr>
+          <td><code class="dn"><%= k.kid %></code></td>
+          <td class="muted"><%= new Date(k.created_at).toLocaleString() %></td>
+          <td>
+            <% if (!k.is_active) { %>
+              <span class="badge off">Retired <%= k.retired_at ? new Date(k.retired_at).toLocaleDateString() : '' %></span>
+            <% } else if (i === keys.findIndex(x => x.is_active)) { %>
+              <span class="badge on">Signing</span>
+            <% } else { %>
+              <span class="badge off" style="background:#fef9c3; color:#854d0e;">Verify-only</span>
+            <% } %>
+          </td>
+          <td style="text-align:right;">
+            <% if (k.is_active && i !== keys.findIndex(x => x.is_active)) { %>
+            <form method="post" action="/admin/keys/retire" style="display:inline;">
+              <input type="hidden" name="csrf" value="<%= csrf %>" />
+              <input type="hidden" name="kid" value="<%= k.kid %>" />
+              <button class="btn danger" type="submit" style="padding:4px 10px; font-size:12px;">Retire</button>
+            </form>
+            <% } %>
+          </td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    <p class="sub" style="margin:14px 0 0;">Rotation and retirement take effect immediately on this running instance — no restart required.</p>
+  </div>
+<%- include('foot') %>

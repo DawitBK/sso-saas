@@ -1,0 +1,64 @@
+<%- include('head', { title: 'Dashboard', adminEmail }) %>
+  <h1>Admin console</h1>
+  <p class="sub">Manage local users, group memberships, app entitlements, and per-app roles.</p>
+
+  <div class="stats">
+    <div class="card">
+      <div class="muted" style="font-size:12px; margin-bottom:6px;">Local users</div>
+      <div class="stat"><%= userCount %></div>
+      <p class="sub" style="margin:6px 0 0;"><a class="link" href="/admin/users">Manage users →</a></p>
+    </div>
+    <div class="card">
+      <div class="muted" style="font-size:12px; margin-bottom:6px;">Known groups</div>
+      <div class="stat"><%= groupCount %></div>
+      <p class="sub" style="margin:6px 0 0;"><a class="link" href="/admin/groups">Manage access →</a></p>
+    </div>
+    <div class="card">
+      <div class="muted" style="font-size:12px; margin-bottom:6px;">DMS internal API</div>
+      <div class="stat" style="font-size:15px; color: <%= dmsConnected ? '#166534' : '#b91c1c' %>;">
+        <%= dmsConnected ? 'Connected' : 'Not configured' %>
+      </div>
+      <p class="sub" style="margin:6px 0 0;"><%= dmsConnected ? 'DMS roles can be managed here.' : 'Set DMS_INTERNAL_API_KEY to manage DMS roles.' %></p>
+    </div>
+  </div>
+
+  <h2>Right now</h2>
+  <div class="stats">
+    <div class="card">
+      <div class="muted" style="font-size:12px; margin-bottom:6px;">Live SSO sessions</div>
+      <div class="stat"><%= stats.sso %></div>
+      <p class="sub" style="margin:6px 0 0;"><a class="link" href="/admin/sessions">Inspect / kill →</a></p>
+    </div>
+    <div class="card">
+      <div class="muted" style="font-size:12px; margin-bottom:6px;">Portal sessions</div>
+      <div class="stat"><%= stats.portal %></div>
+      <p class="sub" style="margin:6px 0 0;"><a class="link" href="/admin/sessions">Inspect / kill →</a></p>
+    </div>
+    <div class="card">
+      <div class="muted" style="font-size:12px; margin-bottom:6px;">Failed sign-ins (24h)</div>
+      <div class="stat" style="color: <%= Number(stats.fails) > 0 ? '#b45309' : 'inherit' %>;"><%= stats.fails %></div>
+      <p class="sub" style="margin:6px 0 0;"><a class="link" href="/admin/logins">Sign-in log →</a></p>
+    </div>
+    <div class="card">
+      <div class="muted" style="font-size:12px; margin-bottom:6px;">Admin actions (7d)</div>
+      <div class="stat"><%= stats.audits %></div>
+      <p class="sub" style="margin:6px 0 0;"><a class="link" href="/admin/audit">Audit trail →</a></p>
+    </div>
+  </div>
+
+  <% if (alerts.length > 0) { %>
+  <div class="card" style="border-color:#fecaca; background:#fef2f2; margin-top:16px;">
+    <p style="margin:0 0 8px; font-weight:700; color:#b91c1c; font-size:13px;">⚠ Possible brute-force activity (≥5 failures in 15 min)</p>
+    <% alerts.forEach(function(a){ %>
+      <p class="sub" style="margin:0; color:#7f1d1d;"><a class="link" style="color:#7f1d1d;" href="/admin/users?q=<%= encodeURIComponent(a.email) %>"><strong><%= a.email %></strong></a> — <%= a.failures %> failed attempts</p>
+    <% }); %>
+  </div>
+  <% } %>
+
+  <h2>How this works</h2>
+  <div class="card">
+    <p class="sub" style="margin:0 0 10px;">Every user is put in one or more <strong>groups</strong>. Each group then gets, per app:</p>
+    <p class="sub" style="margin:0 0 4px;">1. An <strong>entitlement</strong> — can this group even open the app (shows on the portal)?</p>
+    <p class="sub" style="margin:0;">2. A <strong>role</strong> — what that group's members can do inside the app once they're in.</p>
+  </div>
+<%- include('foot') %>

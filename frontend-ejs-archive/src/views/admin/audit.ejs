@@ -1,0 +1,34 @@
+<%- include('head', { title: 'Audit', adminEmail }) %>
+  <h1>Audit trail</h1>
+  <p class="sub">Every admin action: who changed what, when. Most recent first (last 100).</p>
+
+  <div class="card" style="margin-bottom:16px;">
+    <a class="btn" href="/admin/audit/verify">Verify chain integrity</a>
+    <% if (chainResult) { %>
+      <p style="margin-top:10px; <%= chainResult.valid ? 'color:#2a2;' : 'color:#c22; font-weight:bold;' %>">
+        <%= chainResult.valid ? 'VALID' : 'BROKEN' %> — <%= chainResult.message %>
+      </p>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <% if (entries.length === 0) { %>
+      <p class="muted">No admin actions recorded yet.</p>
+    <% } else { %>
+    <table>
+      <thead><tr><th>When</th><th>Actor</th><th>Action</th><th>Target</th><th>Detail</th></tr></thead>
+      <tbody>
+        <% entries.forEach(function(e){ %>
+        <tr>
+          <td class="muted" style="white-space:nowrap;"><%= new Date(e.created_at).toLocaleString() %></td>
+          <td><%= e.actor_email %></td>
+          <td><code class="dn"><%= e.action %></code></td>
+          <td style="word-break:break-all;"><%= e.target %></td>
+          <td class="muted" style="font-size:12px; word-break:break-all;"><%= JSON.stringify(e.detail) %></td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+<%- include('foot') %>

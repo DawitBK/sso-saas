@@ -1,0 +1,82 @@
+<%- include('head', { title: dn, adminEmail }) %>
+  <p class="sub" style="margin-bottom:6px;"><a class="link" href="/admin/groups">← All groups</a></p>
+  <h1 style="font-size:16px; word-break:break-all;"><code class="dn"><%= dn %></code></h1>
+  <p class="sub" style="margin:8px 0 20px;"><%= members.length %> member<%= members.length === 1 ? '' : 's' %></p>
+
+  <h2>App access</h2>
+  <div class="card">
+    <p class="sub" style="margin:0 0 4px;">Which apps this group's members can see and open from the portal.</p>
+    <form method="post" action="/admin/groups/entitlements">
+      <input type="hidden" name="csrf" value="<%= csrf %>" />
+      <input type="hidden" name="dn" value="<%= dn %>" />
+      <div class="checks">
+        <% apps.forEach(function(a){ %>
+        <label>
+          <input type="checkbox" name="rp" value="<%= a.rp %>" <%= entitled.has(a.rp) ? 'checked' : '' %> />
+          <%= a.label %>
+        </label>
+        <% }); %>
+      </div>
+      <button class="btn" type="submit">Save access</button>
+    </form>
+  </div>
+
+  <h2>DMS (EDAMS) role</h2>
+  <div class="card">
+    <% if (dmsError) { %>
+      <p class="error" style="margin-bottom:0;"><%= dmsError %></p>
+    <% } else { %>
+      <p class="sub" style="margin:0 0 4px;">The role DMS assigns to this group's members when they sign in via SSO.</p>
+      <form method="post" action="/admin/groups/dms-role" class="row">
+        <input type="hidden" name="csrf" value="<%= csrf %>" />
+        <input type="hidden" name="dn" value="<%= dn %>" />
+        <div>
+          <label for="dms-role">Role</label>
+          <select id="dms-role" name="role">
+            <option value="" <%= !dmsRole ? 'selected' : '' %>>— no role (defaults to EMPLOYEE) —</option>
+            <% dmsRoles.forEach(function(r){ %>
+              <option value="<%= r %>" <%= dmsRole === r ? 'selected' : '' %>><%= r %></option>
+            <% }); %>
+          </select>
+        </div>
+        <button class="btn" type="submit">Save DMS role</button>
+      </form>
+    <% } %>
+  </div>
+
+  <h2>GMS role</h2>
+  <div class="card">
+    <p class="sub" style="margin:0 0 4px;">The role the GMS token bridge mints for this group's members. Guests are never assigned here — they use GMS's own native sign-in.</p>
+    <p class="sub" style="margin:0 0 10px; color:#b45309;">admin / reception / host also need an office, which is set per-user (not per-group) — set it on each member's own user page.</p>
+    <form method="post" action="/admin/groups/gms-role" class="row">
+      <input type="hidden" name="csrf" value="<%= csrf %>" />
+      <input type="hidden" name="dn" value="<%= dn %>" />
+      <div>
+        <label for="gms-role">Role</label>
+        <select id="gms-role" name="role">
+          <option value="" <%= !gmsRole ? 'selected' : '' %>>— no role (defaults to guest) —</option>
+          <% gmsRoles.forEach(function(r){ %>
+            <option value="<%= r %>" <%= gmsRole === r ? 'selected' : '' %>><%= r %></option>
+          <% }); %>
+        </select>
+      </div>
+      <button class="btn" type="submit">Save GMS role</button>
+    </form>
+  </div>
+
+  <h2>Members</h2>
+  <div class="card">
+    <% if (members.length === 0) { %>
+      <p class="muted">No users are in this group yet.</p>
+    <% } else { %>
+    <table>
+      <thead><tr><th>Email</th><th></th></tr></thead>
+      <tbody>
+        <% members.forEach(function(m){ %>
+        <tr><td><%= m.email %></td><td><a class="link" href="/admin/users/<%= m.id %>">Manage →</a></td></tr>
+        <% }); %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+<%- include('foot') %>

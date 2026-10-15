@@ -1,0 +1,488 @@
+<title>Example Corp SSO — Integration Guide</title>
+<style>
+  :root{
+    --bg:#f6f5f1; --surface:#ffffff; --surface-2:#f0efe9;
+    --ink:#1c2024; --ink-2:#4b555c; --ink-3:#727f86;
+    --border:#dedcd3; --border-2:#cbc9be;
+    --accent:#2a6f74; --accent-ink:#123639; --accent-soft:#e2eeee; --accent-soft-border:#c3dbdc;
+    --code-bg:#12181c; --code-ink:#d8e2e6; --code-border:#232c31;
+    --good:#2f7d4f; --warn:#a2661a; --bad:#a3402f;
+    --shadow: 0 1px 2px rgba(20,20,15,0.04), 0 8px 24px -12px rgba(20,20,15,0.10);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#15181a; --surface:#1b1f22; --surface-2:#202427;
+      --ink:#e7e6e1; --ink-2:#b3b8ba; --ink-3:#838d90;
+      --border:#2c3134; --border-2:#3a4145;
+      --accent:#6fc2c6; --accent-ink:#d3f0f1; --accent-soft:#1c2b2c; --accent-soft-border:#2a3f40;
+      --code-bg:#0d1113; --code-ink:#d8e2e6; --code-border:#242a2d;
+      --good:#5fbf85; --warn:#d69a4e; --bad:#e07b68;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#15181a; --surface:#1b1f22; --surface-2:#202427;
+    --ink:#e7e6e1; --ink-2:#b3b8ba; --ink-3:#838d90;
+    --border:#2c3134; --border-2:#3a4145;
+    --accent:#6fc2c6; --accent-ink:#d3f0f1; --accent-soft:#1c2b2c; --accent-soft-border:#2a3f40;
+    --code-bg:#0d1113; --code-ink:#d8e2e6; --code-border:#242a2d;
+    --good:#5fbf85; --warn:#d69a4e; --bad:#e07b68;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-size:16px; line-height:1.62;
+  }
+  ::selection{ background:var(--accent-soft-border); }
+  h1,h2,h3,h4{
+    font-family:"Source Serif 4","Iowan Old Style", Georgia, serif;
+    color:var(--ink); font-weight:600; text-wrap:balance; line-height:1.22;
+  }
+  a{ color:var(--accent-ink); text-decoration-color:var(--accent-soft-border); text-underline-offset:2px; }
+  a:hover{ text-decoration-color:currentColor; }
+  code, pre, .mono{ font-family:"IBM Plex Mono","SFMono-Regular",Consolas,monospace; }
+  code{ background:var(--surface-2); border:1px solid var(--border); border-radius:4px; padding:0.05em 0.4em; font-size:0.86em; }
+  p code, li code, td code{ white-space:nowrap; }
+
+  /* ---------- shell layout ---------- */
+  .shell{ display:grid; grid-template-columns: 288px minmax(0,1fr); min-height:100vh; }
+  .side{
+    position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+    border-right:1px solid var(--border); background:var(--surface);
+    padding:22px 14px 40px;
+  }
+  .side::-webkit-scrollbar{ width:8px; }
+  .side::-webkit-scrollbar-thumb{ background:var(--border-2); border-radius:8px; }
+  .brand{ display:flex; align-items:baseline; gap:8px; padding:2px 10px 16px; border-bottom:1px solid var(--border); margin-bottom:10px;}
+  .brand .mark{ font-family:"Source Serif 4",serif; font-weight:700; font-size:1.05rem; color:var(--accent-ink); }
+  .brand .sub{ font-size:0.7rem; color:var(--ink-3); text-transform:uppercase; letter-spacing:.08em; }
+  nav.toc{ display:flex; flex-direction:column; gap:1px; }
+  nav.toc a{
+    display:block; padding:6px 10px; border-radius:6px; font-size:0.83rem;
+    color:var(--ink-2); text-decoration:none; white-space:normal;
+  }
+  nav.toc a .n{ color:var(--ink-3); font-variant-numeric:tabular-nums; margin-right:6px; font-size:0.78rem; }
+  nav.toc a:hover{ background:var(--surface-2); color:var(--ink); }
+  nav.toc a.active{ background:var(--accent-soft); color:var(--accent-ink); font-weight:600; }
+  .side-foot{ margin-top:18px; padding:10px 10px 0; border-top:1px solid var(--border); font-size:0.72rem; color:var(--ink-3); }
+
+  .navtoggle{ display:none; }
+
+  main{ min-width:0; }
+  .wrap{ max-width:840px; margin:0 auto; padding:56px 32px 120px; }
+
+  /* ---------- cover ---------- */
+  .cover{ margin-bottom:44px; }
+  .cover .eyebrow{
+    display:inline-flex; align-items:center; gap:8px; font-size:0.74rem; letter-spacing:.10em; text-transform:uppercase;
+    color:var(--accent-ink); background:var(--accent-soft); border:1px solid var(--accent-soft-border);
+    padding:4px 10px; border-radius:20px; margin-bottom:18px;
+  }
+  .cover h1{ font-size:2.6rem; margin:0 0 10px; letter-spacing:-.01em; }
+  .cover .dek{ font-size:1.12rem; color:var(--ink-2); max-width:62ch; margin:0 0 22px; }
+  .meta-row{ display:flex; flex-wrap:wrap; gap:10px 26px; padding:16px 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); margin-bottom:22px;}
+  .meta-item{ font-size:0.82rem; color:var(--ink-2); }
+  .meta-item b{ color:var(--ink); font-weight:600; }
+  .cover p.lead{ font-size:1rem; color:var(--ink-2); }
+  .cover p.lead strong{ color:var(--ink); }
+
+  .refs-table{ margin-top:10px; }
+
+  /* ---------- sections ---------- */
+  .sec{ padding-top:64px; margin-top:-64px; }
+  .sec-head{ display:flex; align-items:baseline; gap:12px; margin: 0 0 18px; }
+  .tag{
+    font-family:"IBM Plex Mono",monospace; font-size:0.76rem; color:var(--accent-ink);
+    background:var(--accent-soft); border:1px solid var(--accent-soft-border); border-radius:5px;
+    padding:2px 7px; flex:none; transform:translateY(-2px);
+  }
+  h2{ font-size:1.56rem; margin:0; }
+  h3{ font-size:1.18rem; margin:30px 0 10px; }
+  h4{ font-size:1.0rem; margin:20px 0 8px; color:var(--ink); }
+  .sec > hr, hr.rule{ border:none; border-top:1px solid var(--border); margin:52px 0; }
+
+  p{ margin: 0 0 14px; }
+  ul, ol{ margin:0 0 14px; padding-left:1.35em; }
+  li{ margin-bottom:6px; }
+  li::marker{ color:var(--ink-3); }
+
+  blockquote.callout{
+    margin:18px 0; padding:14px 18px; border-left:3px solid var(--accent); background:var(--accent-soft);
+    border-radius:0 8px 8px 0; color:var(--ink-2); font-size:0.96rem;
+  }
+  blockquote.callout p{ margin:0 0 8px; }
+  blockquote.callout p:last-child{ margin-bottom:0; }
+  blockquote.callout strong{ color:var(--ink); }
+
+  .twrap{ overflow-x:auto; margin:16px 0 22px; border:1px solid var(--border); border-radius:10px; box-shadow:var(--shadow); }
+  table{ border-collapse:collapse; width:100%; font-size:0.86rem; background:var(--surface); }
+  thead th{
+    text-align:left; font-family:"IBM Plex Mono",monospace; font-size:0.72rem; letter-spacing:.04em; text-transform:uppercase;
+    color:var(--ink-3); background:var(--surface-2); padding:10px 14px; border-bottom:1px solid var(--border); white-space:nowrap;
+  }
+  td{ padding:10px 14px; border-bottom:1px solid var(--border); vertical-align:top; color:var(--ink-2); }
+  tr:last-child td{ border-bottom:none; }
+  td:first-child{ color:var(--ink); font-weight:600; white-space:nowrap; }
+  td b, td strong{ color:var(--ink); }
+
+  pre{
+    background:var(--code-bg); color:var(--code-ink); border:1px solid var(--code-border);
+    border-radius:10px; padding:16px 18px; overflow-x:auto; font-size:0.82rem; line-height:1.58;
+    margin:14px 0 20px; box-shadow:var(--shadow);
+  }
+  pre code{ background:none; border:none; padding:0; color:inherit; }
+
+  .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0 24px; }
+  @media (max-width:720px){ .grid-3{ grid-template-columns:1fr; } }
+  .sys-card{ border:1px solid var(--border); border-radius:12px; padding:16px 16px 14px; background:var(--surface); box-shadow:var(--shadow); }
+  .sys-card .name{ font-family:"Source Serif 4",serif; font-weight:700; font-size:1.08rem; margin-bottom:2px; }
+  .sys-card .role{ font-size:0.78rem; color:var(--ink-3); margin-bottom:10px; }
+  .sys-card dl{ margin:0; display:grid; grid-template-columns:auto 1fr; gap:4px 10px; font-size:0.8rem; }
+  .sys-card dt{ color:var(--ink-3); }
+  .sys-card dd{ margin:0; color:var(--ink); font-family:"IBM Plex Mono",monospace; text-align:right; }
+
+  figure.diagram{ margin:20px 0 26px; padding:18px 18px 10px; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); }
+  figure.diagram svg{ width:100%; height:auto; display:block; color:var(--ink-2); }
+  figure.diagram pre.mermaid{ margin:0; box-shadow:none; }
+  figure.diagram figcaption{ font-size:0.8rem; color:var(--ink-3); margin-top:8px; padding-top:8px; border-top:1px solid var(--border); }
+
+  .pill{ display:inline-block; font-size:0.72rem; padding:1px 8px; border-radius:20px; font-weight:600; }
+  .pill.good{ background:color-mix(in srgb, var(--good) 16%, transparent); color:var(--good); }
+  .pill.warn{ background:color-mix(in srgb, var(--warn) 16%, transparent); color:var(--warn); }
+  .pill.bad{ background:color-mix(in srgb, var(--bad) 16%, transparent); color:var(--bad); }
+
+  .backlink{ position:fixed; right:22px; bottom:22px; background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow);
+    border-radius:999px; width:40px; height:40px; display:flex; align-items:center; justify-content:center; color:var(--ink-2);
+    text-decoration:none; opacity:0; pointer-events:none; transition:opacity .18s ease; font-size:1.1rem; }
+  .backlink.show{ opacity:1; pointer-events:auto; }
+
+  footer.doc-foot{ margin-top:60px; padding-top:24px; border-top:1px solid var(--border); font-size:0.84rem; color:var(--ink-3); font-style:italic; }
+
+  dl.glossary{ display:grid; grid-template-columns:max-content 1fr; gap:6px 16px; }
+  dl.glossary dt{ font-weight:600; color:var(--ink); font-family:"IBM Plex Mono",monospace; font-size:0.86rem; }
+  dl.glossary dd{ margin:0 0 8px; color:var(--ink-2); }
+
+  @media (max-width:960px){
+    .shell{ grid-template-columns:1fr; }
+    .side{ position:relative; height:auto; top:0; border-right:none; border-bottom:1px solid var(--border); }
+    .side.collapsed nav.toc, .side.collapsed .side-foot{ display:none; }
+    .navtoggle{ display:flex; align-items:center; gap:8px; width:100%; background:var(--surface-2); border:1px solid var(--border);
+      border-radius:8px; padding:9px 12px; font-size:0.82rem; color:var(--ink); cursor:pointer; margin-bottom:4px; }
+    .wrap{ padding:36px 20px 90px; }
+    .cover h1{ font-size:2rem; }
+  }
+  @media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto; } .backlink{ transition:none; } }
+
+  ul.checklist{ list-style:none; padding-left:0.2em; }
+  ul.checklist li{ position:relative; padding-left:1.6em; }
+  ul.checklist li::before{ content:"☐"; position:absolute; left:0; top:0; color:var(--ink-3); }
+</style>
+<div class="stale-note" style="font:14px/1.5 system-ui,sans-serif;background:#fbefdc;color:#5a3a00;border-bottom:1px solid #e2a554;padding:8px 16px"><b>This page is older than its text source.</b> Corrected: public clients are not supported, the app lists are now two (clientSeed + APP_REGISTRY), and changing redirect addresses needs npm run client:uris. <a href="SSO-INTEGRATION-GUIDE.md" style="color:#5a3a00">SSO-INTEGRATION-GUIDE.md</a> was updated 2026-10-04 and is the current version.</div>
+
+<div class="shell">
+  <aside class="side" id="side">
+    <div class="brand"><span class="mark">Example Corp SSO</span><span class="sub">Integration Guide</span></div>
+    <button class="navtoggle" id="navtoggle" type="button">☰ Contents</button>
+    <nav class="toc" id="toc">
+      <a href="#top"><span class="n">—</span>Overview</a>
+      <a href="#1-what-sso-is"><span class="n">01</span>What SSO is</a>
+      <a href="#2-endpoints-and-claims"><span class="n">02</span>Endpoints &amp; claims</a>
+      <a href="#3-pick-your-integration-mode"><span class="n">03</span>Pick your mode</a>
+      <a href="#4-step-0-register-your-app-as-an-oidc-client"><span class="n">04</span>Register your app</a>
+      <a href="#5-step-05-add-a-portal-tile"><span class="n">05</span>Add a portal tile</a>
+      <a href="#6-mode-a-real-oidc-client"><span class="n">06</span>Mode A — OIDC client</a>
+      <a href="#7-mode-b-token-bridge-gateway-legacy-no-touch-apps"><span class="n">07</span>Mode B — token bridge</a>
+      <a href="#8-mode-c-additional-login-option-keep-local-accounts"><span class="n">08</span>Mode C — additional login</a>
+      <a href="#9-role-and-permission-mapping"><span class="n">09</span>Role &amp; permission mapping</a>
+      <a href="#10-backchannel-logout-recommended"><span class="n">10</span>Backchannel logout</a>
+      <a href="#11-security-requirements-non-negotiable"><span class="n">11</span>Security requirements</a>
+      <a href="#12-what-must-stay-outside-sso"><span class="n">12</span>What stays outside SSO</a>
+      <a href="#13-onboarding-checklist"><span class="n">13</span>Onboarding checklist</a>
+    </nav>
+    <div class="side-foot">Part of the SSO documentation set<br>See also: Code Reference · Architecture</div>
+  </aside>
+
+  <main>
+    <div class="wrap" id="top">
+
+      <div class="cover">
+        <span class="eyebrow">SSO documentation · Integration Guide</span>
+        <h1>Example Corp SSO — Integration Guide</h1>
+        <p class="dek">Everything needed to plug an application into the identity provider: what SSO gives you, which integration pattern fits your app, and the exact steps to follow.</p>
+        <div class="meta-row">
+          <div class="meta-item"><b>Audience:</b> a developer who has never touched this before</div>
+          <div class="meta-item"><b>Companion:</b> the Code Reference has working code for every mode below</div>
+        </div>
+        <p class="lead">This document is written to be handed to a developer with no prior context on how other applications integrate — it assumes nothing beyond "I need to add SSO to my app."</p>
+      </div>
+
+      <hr class="rule">
+<section class="sec" id="1-what-sso-is">
+<div class="sec-head"><span class="tag">§1</span><h2>What SSO is</h2></div>
+<p>The IdP is a spec-compliant OpenID Connect provider. One login at the SSO portal creates a session cookie on the IdP's own origin; every relying party (your app) gets the user's identity by running the standard authorization-code flow against that same IdP. If the user already has an SSO session, this round-trip succeeds silently — no second login prompt.</p>
+<p>Two things it explicitly does <strong>not</strong> do:</p>
+<ul>
+<li>It does not decide what a user is allowed to do inside your app. It authenticates <em>who someone is</em> and optionally hands you a coarse role claim; your app still owns its own authorization model.</li>
+<li>It does not touch public or external-facing flows (anything a non-employee legitimately uses). Those keep working with zero IdP involvement — see <a href="#12-what-must-stay-outside-sso">§12</a>.</li>
+</ul>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="2-endpoints-and-claims">
+<div class="sec-head"><span class="tag">§2</span><h2>Endpoints and claims</h2></div>
+<p><strong>Issuer / base URL</strong></p>
+<div class="twrap"><table>
+<thead><tr><th>Environment</th><th>Issuer (browser-facing)</th><th>Internal URL (server-to-server)</th></tr></thead>
+<tbody>
+<tr><td>Dev</td><td><code>http://localhost:7301</code></td><td><code>http://localhost:7300</code></td></tr>
+<tr><td>Prod</td><td>your production SSO domain</td><td>a loopback/internal address reachable from your app's backend</td></tr>
+</tbody></table></div>
+<p>Use the <strong>issuer</strong> for anything the browser is redirected to (the authorize endpoint, the logout page). Use the <strong>internal URL</strong> for calls your backend makes directly (token exchange, JWKS fetch) — if your app and the IdP run behind the same reverse proxy on one host, calling back out through the public issuer for a server-to-server request is unnecessary extra latency and an unnecessary external dependency.</p>
+<p><strong>OIDC endpoints</strong> (all relative to the issuer):</p>
+<div class="twrap"><table>
+<thead><tr><th>Endpoint</th><th>Path</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Discovery</td><td><code>/.well-known/openid-configuration</code></td><td>Standard OIDC discovery document — lists every endpoint below</td></tr>
+<tr><td>Authorization</td><td><code>/authorize</code></td><td>Where you redirect the browser to start login</td></tr>
+<tr><td>Token</td><td><code>/token</code></td><td><code>client_secret_post</code> client authentication</td></tr>
+<tr><td>JWKS</td><td><code>/jwks</code></td><td>RS256 signing keys — used to verify tokens, rotates over time</td></tr>
+<tr><td>Userinfo</td><td><code>/me</code></td><td>Optional — every claim is also placed directly in the id_token, so most apps never need to call this</td></tr>
+<tr><td>RP-initiated logout</td><td><code>/session/end</code></td><td>Ends the shared SSO session, not just your app's local one</td></tr>
+</tbody></table></div>
+<p>You can either hardcode these paths from your own environment config, or fetch the discovery document at startup and read the endpoint URLs from it. Both are valid; hardcoding is simpler if you don't need to tolerate the IdP ever moving its paths.</p>
+<p><strong>Claims present in every id_token</strong> (request scope <code>openid profile email</code>):</p>
+<div class="twrap"><table>
+<thead><tr><th>Claim</th><th>Type</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>sub</code></td><td>string</td><td>Stable subject id for the user</td></tr>
+<tr><td><code>email</code></td><td>string</td><td>Use this as the join key to your local user table</td></tr>
+<tr><td><code>email_verified</code></td><td>boolean</td><td>Must be <code>true</code> before you trust the email — see <a href="#11-security-requirements-non-negotiable">§11</a></td></tr>
+<tr><td><code>name</code>, <code>given_name</code>, <code>family_name</code></td><td>string</td><td>Display name parts</td></tr>
+<tr><td>an <code>ad_groups</code> claim, namespaced under a fixed URL</td><td>string[]</td><td>Raw AD group identifiers the user belongs to</td></tr>
+</tbody></table></div>
+<p>The IdP can also be configured to emit an additional, app-specific coarse <strong>roles</strong> claim (namespaced under a URL unique to your app) if you'd rather have the IdP resolve group→role mapping for you instead of doing it yourself — see <a href="#9-role-and-permission-mapping">§9</a>. Ask the SSO maintainer for the exact claim name once this is set up for your client, or add it yourself following the pattern described there.</p>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="3-pick-your-integration-mode">
+<div class="sec-head"><span class="tag">§3</span><h2>Pick your integration mode</h2></div>
+<p>Ask one question: <strong>can you add a login redirect and verify a JWT in your app's own code?</strong></p>
+<div class="twrap"><table>
+<thead><tr><th></th><th>Mode A — OIDC client</th><th>Mode B — token bridge + gateway</th><th>Mode C — additional login option</th></tr></thead>
+<tbody>
+<tr><td>Use when</td><td>New app, or any app you can modify (any backend language, any SPA framework)</td><td>A legacy app you genuinely cannot modify — no way to add a redirect or verify a token</td><td>An app with a working local-account login you want to keep, and SSO should just be another way in</td></tr>
+<tr><td>App code changes</td><td>Add "Sign in with SSO" + a callback route; verify id_token against JWKS</td><td>None</td><td>Small — a new login route + upsert-by-email, reusing existing session/token issuance</td></tr>
+<tr><td>Who verifies the token</td><td>Your app, directly</td><td>The IdP, on your app's behalf (mints a credential your app already trusts)</td><td>Your app, at the callback, same as Mode A</td></tr>
+</tbody></table></div>
+<p>Mode A is the default and by far the most common choice — reach for Mode B only when Mode A is genuinely impossible, and consider Mode C whenever you have a mature local-auth system you'd rather not disturb.</p>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="4-step-0-register-your-app-as-an-oidc-client">
+<div class="sec-head"><span class="tag">§4</span><h2>Step 0 — register your app as an OIDC client</h2></div>
+<p>Before any code runs, your app needs a registered OIDC client on the IdP side: a <code>client_id</code>, a <code>client_secret</code> (unless you're registering a public/browser-only client — see below), and the exact redirect URIs your app will use. Get these from whoever administers the IdP, or if you administer it yourself, register:</p>
+<ul>
+<li><code>client_id</code> — short, lowercase, stable. Once anything else references it (role mappings, entitlements), avoid renaming it — that requires a coordinated migration on both sides, not just a config edit.</li>
+<li><code>redirect_uris</code> — the exact callback URL(s) your app will be redirected to after login, one per environment you run in. These must match <strong>exactly</strong> what your app sends in the authorize request — no trailing slash differences, no scheme mismatches.</li>
+<li><code>post_logout_redirect_uris</code> — where the browser lands after signing out.</li>
+<li><code>client_secret</code> — a strong, randomly generated secret, stored only in your app's environment configuration, never committed to source control and never shared outside the two systems that need it.</li>
+</ul>
+<p>If your app is a browser-only SPA with no backend able to hold a secret safely, register instead as a <strong>public client</strong> (<code>token_endpoint_auth_method: none</code>) and use PKCE for every authorization request — a public client without PKCE is not an acceptable configuration.</p>
+<p>A production deployment must use real, non-<code>localhost</code> redirect URIs and a real generated secret — never ship a placeholder or development default to production.</p>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="5-step-05-add-a-portal-tile">
+<div class="sec-head"><span class="tag">§5</span><h2>Step 0.5 — add a portal tile</h2></div>
+<p>Registering an OIDC client makes your app <strong>loggable-into</strong>. It does not automatically make it <strong>visible on an app launcher</strong>, if this IdP serves one. Those are two separate steps — confirm with whoever runs the IdP whether a launcher exists and whether your app needs a tile added to it, and get that tile added at the same time you register the client so the two don't drift out of sync.</p>
+<p>Optionally, visibility (or a tile) can be restricted to specific AD groups rather than shown to every authenticated user — ask the IdP administrator if you need this and provide the group identifier(s) that should have access.</p>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="6-mode-a-real-oidc-client">
+<div class="sec-head"><span class="tag">§6</span><h2>Mode A — real OIDC client</h2></div>
+<h3 id="flow">Flow</h3>
+<pre><code>Browser → GET  /auth/login            (your app)
+        → redirect to IdP /authorize  (with state + nonce)
+        → user already has an SSO session → IdP redirects straight back
+        → GET  your redirect_uri?code=&amp;state=
+        → your backend's /auth/callback exchanges code for tokens
+        → backend verifies id_token against IdP /jwks
+        → backend finds-or-creates the local user by email
+        → backend issues your app's own session/JWT, as normal</code></pre>
+<h3 id="what-your-backend-must-do">What your backend must do</h3>
+<ol>
+<li><strong>Authorize redirect.</strong> Generate a random <code>state</code> and <code>nonce</code>, store them server-side (a cache or a short-lived DB row — anywhere you can look them up a moment later), and redirect the browser to <code>{issuer}/authorize</code> with: ``<code> response_type=code client_id=&lt;your client id&gt; redirect_uri=&lt;your registered redirect URI&gt; scope=openid profile email state=&lt;random value you generated&gt; nonce=&lt;random value you generated&gt; </code>``</li>
+<li><strong>Token exchange.</strong> On callback, first verify the returned <code>state</code> matches what you stored (this is your CSRF protection — reject the request if it doesn't match or was already consumed). Then <code>POST</code> to <code>{internalUrl}/token</code> with: ``<code> grant_type=authorization_code code=&lt;the code from the callback&gt; redirect_uri=&lt;the same redirect URI used above&gt; client_id=&lt;your client id&gt; client_secret=&lt;your client secret&gt; </code>``</li>
+<li><strong>Verify the id_token.</strong> Fetch <code>{internalUrl}/jwks</code>, cache the keys (refresh the cache once on an unrecognized <code>kid</code> before failing — this handles the IdP rotating its signing keys without requiring a redeploy on your side), and verify:</li>
+</ol>
+<p>   - Signature (RS256) against the matching JWK.    - <code>iss</code> equals the IdP's issuer.    - <code>aud</code> equals your <code>client_id</code>.    - <code>nonce</code> in the token matches what you stored at authorize time —      this is what prevents token replay.    - <code>email_verified === true</code> — <strong>do not skip this.</strong> An id_token      without a verified email must not be trusted for account lookup or      creation.</p>
+<ol>
+<li><strong>Find-or-provision the local user</strong> by <code>email</code>. On first login, create the local user record with an unusable local password (an SSO-provisioned user authenticates via the IdP, never a local password) and default them into whatever baseline role/permission set new users get in your app.</li>
+<li><strong>Resolve roles</strong>, if your app wants coarse roles from SSO rather than managing them entirely locally — see <a href="#9-role-and-permission-mapping">§9</a>.</li>
+<li><strong>Issue your app's own session/token</strong> exactly the way local login already does. From this point on, your app's normal authorization logic is completely unaffected — OIDC login is just another way to reach the same "user is now authenticated" state your app already knows how to handle.</li>
+</ol>
+<h3 id="any-language-works">Any language works</h3>
+<p>This is standard OIDC — nothing about it requires any particular backend language or framework. Any OIDC client library (or a hand-rolled authorize/token/JWKS-verify flow, which is only a few dozen lines) works identically. The contract is always the same: redirect to <code>/authorize</code>, exchange the code at <code>/token</code>, verify against <code>/jwks</code>, read <code>email</code> + <code>email_verified</code> + whatever role claim you need.</p>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="7-mode-b-token-bridge-gateway-legacy-no-touch-apps">
+<div class="sec-head"><span class="tag">§7</span><h2>Mode B — token bridge + gateway (legacy, no-touch apps)</h2></div>
+<p>Use this only when Mode A is truly not possible — the app cannot be given a login redirect, or cannot be taught to verify a JWT. This mode requires <strong>zero changes to the target app</strong>; all of the work happens on the IdP side.</p>
+<h3 id="the-three-pieces">The three pieces</h3>
+<ol>
+<li><strong>Bridge (mints the app's native credential).</strong> A small service-side module connects to the target app's own database (or whatever storage it uses for accounts), finds or provisions the app's user record, and mints whatever credential that app already trusts and verifies at request time — a JWT signed with the app's own secret, a session row in its own session store, a signed cookie, whatever it natively expects. This is the one piece that requires knowing the target app's internals; everything below is generic.</li>
+<li><strong>OIDC relying-party flow, run on the app's behalf.</strong> This is a standard Mode-A-style OIDC client, registered as its own client id, but driven entirely from the IdP side rather than the target app. A "start" endpoint redirects to <code>/authorize</code> (with PKCE, since this is effectively a confidential service acting on the user's behalf); since the SSO session is already present it comes straight back; a "callback" endpoint verifies the returned id_token and calls the bridge module above to mint the app's real credential. The callback then hands off a single-use, cookie-bound code — bound so that a leaked code (log line, proxy, link-scanner prefetch) cannot be redeemed by anyone but the browser that actually completed the login.</li>
+<li><strong>Same-origin gateway.</strong> Browsers isolate storage per origin, so the IdP cannot hand a session directly to an app hosted on a different origin. The gateway is a small reverse proxy that serves the target app's frontend <em>and</em> proxies its API on one origin. A dedicated endpoint on that origin redeems the one-time code from step 2 and seeds the session the way the app itself expects (cookie or <code>localStorage</code>), then redirects into the app's authenticated landing page. Point the app's own frontend configuration — not its auth code, just wherever it's told which origin to call — at the gateway origin, so its API calls become same-origin and need no CORS handling.</li>
+</ol>
+<p>If the legacy app can share a parent domain with the IdP in production and reads its own credential from a cookie scoped to that shared parent domain, you can sometimes skip the gateway's storage-seeding step entirely — the gateway's proxy-and-serve role is what's actually load-bearing; exactly how the session gets seeded adapts to whatever the app expects.</p>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="8-mode-c-additional-login-option-keep-local-accounts">
+<div class="sec-head"><span class="tag">§8</span><h2>Mode C — additional login option (keep local accounts)</h2></div>
+<p>This is the mode to reach for when the app already has a working local login you have no reason to touch, and SSO should simply be <em>another</em> door in. It looks almost exactly like Mode A, with one difference: the callback does not build a new session/token mechanism — it reuses whatever local login already produces.</p>
+<ol>
+<li>A login route that performs the same authorize-redirect as Mode A.</li>
+<li>A callback route that performs the same token exchange + id_token verification as Mode A.</li>
+<li><strong>Upsert the local user by email.</strong> If the user doesn't exist locally, create them with a random, never-used, never-shown password — it exists purely so the row satisfies the same schema local accounts use, avoiding a schema change just to support SSO-provisioned users.</li>
+<li><strong>Call the exact same token/cookie issuance function local login already calls.</strong> Every other part of the app — auth middleware, role checks, protected routes — stays completely untouched, because as far as the rest of the app is concerned, a normal login just happened.</li>
+</ol>
+<p>This mode is deliberately the least invasive: it adds a login path, it does not touch the authorization model. If the app has no existing concept of AD-group-derived roles, it's reasonable to give every SSO-provisioned user a single default local role and worry about finer-grained mapping later, rather than inventing a mapping table for a role scheme the app doesn't have yet.</p>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="9-role-and-permission-mapping">
+<div class="sec-head"><span class="tag">§9</span><h2>Role and permission mapping</h2></div>
+<p>The IdP authenticates identity; it never decides what a user may do. Two supported patterns for getting from "who they are" to "what role they get," in increasing order of shared responsibility:</p>
+<p><strong>A. Resolve the <code>ad_groups</code> claim yourself.</strong> Read the raw claim and look up your own group→role mapping table, owned entirely by your app. A sensible precedence order: an explicit per-user role assignment first, group mapping second, a hardcoded default role last — so a login never hard-fails just because a group mapping is missing or incomplete.</p>
+<p><strong>B. Have the IdP resolve a coarse role claim for you.</strong> The IdP computes an app-specific roles claim and adds it to the id_token, using the same precedence as above (explicit per-user grant, then group mapping, then a default), so every relying party that wants this doesn't have to duplicate the same mapping logic. Use this when you'd rather the mapping live in one shared place, or when multiple systems need to agree on the same coarse role for the same user.</p>
+<p>Either is a valid choice for a new integration. If you want option B, ask the IdP administrator to add your claim (namespaced consistently with any others already configured) and a mapping table for it; if you'd rather own it entirely, option A requires nothing from the IdP side beyond the raw <code>ad_groups</code> claim you already get.</p>
+<p>Whichever you pick, remember: the claim is a <em>coarse</em> signal (a handful of role names), not a permission system. Fine-grained authorization (who can edit this specific record) is always the app's own job.</p>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="10-backchannel-logout-recommended">
+<div class="sec-head"><span class="tag">§10</span><h2>Backchannel logout (recommended)</h2></div>
+<p>If a user is signed out at the IdP, or disabled by an admin, an app that only checks a locally-cached session will keep honoring that user's existing token until it naturally expires. Backchannel logout closes that gap: the IdP POSTs a signed logout token to a URL you register, and your app immediately invalidates that user's live sessions.</p>
+<p>To implement it:</p>
+<ol>
+<li>Register a backchannel-logout endpoint URL with the IdP.</li>
+<li>On receipt, verify the logout token against the IdP's JWKS the same way you verify an id_token.</li>
+<li>Confirm the <code>http://schemas.openid.net/event/backchannel-logout</code> event is present in the token and that <code>nonce</code> is <strong>absent</strong> (per spec — logout tokens must not carry a nonce).</li>
+<li>Resolve the token's <code>sub</code> claim to your local user and set a revocation cutoff — for example, a timestamp stored somewhere fast to check (cache or in-memory), longer-lived than any token you issue — so every access/refresh token issued at or before that moment is rejected on next use.</li>
+<li>Always respond <code>200</code>, regardless of whether the subject is known locally — do not leak which users exist by varying your response.</li>
+</ol>
+<p>This is optional for a first integration but strongly recommended for anything holding sensitive data. Without it, "sign the user out" and "disable this account" at the IdP are not actually enforced anywhere but the IdP's own portal.</p>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="11-security-requirements-non-negotiable">
+<div class="sec-head"><span class="tag">§11</span><h2>Security requirements (non-negotiable)</h2></div>
+<p>Every mode, every language:</p>
+<ul>
+<li><strong>Verify <code>iss</code>, <code>aud</code>, and <code>exp</code></strong> on every token you accept — not just signature validity.</li>
+<li><strong>Check <code>email_verified === true</code></strong> before trusting the email claim for account lookup or creation. Treat a missing field as unverified, not as verified.</li>
+<li><strong>Use <code>state</code> for CSRF protection</strong> on the authorize round-trip, and <strong><code>nonce</code></strong> to prevent id_token replay. Both are single-use — consume and delete them, don't just check-and-leave.</li>
+<li><strong>PKCE is required for public (no-secret) clients.</strong> Any browser-only SPA client must register with <code>token_endpoint_auth_method: none</code> and perform PKCE.</li>
+<li><strong>Never commit a real client secret</strong> to source control. Secrets are environment-driven, generated per environment, and never shared outside the two systems that need them.</li>
+<li><strong>HTTPS in production, always.</strong> Development defaults using <code>http://localhost</code> are never acceptable in a production <code>redirect_uris</code>/<code>post_logout_redirect_uris</code> value.</li>
+</ul>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="12-what-must-stay-outside-sso">
+<div class="sec-head"><span class="tag">§12</span><h2>What must stay outside SSO</h2></div>
+<p>Some routes are legitimately used by people who are not employees and must keep working with <strong>no IdP involvement at all</strong> — for example: public registration or booking flows for non-staff users, links sent to external parties for a one-time action (signing, confirming, verifying something), and any public verification page meant to be checked by someone with no account at all.</p>
+<p>Rule of thumb: if a legitimate non-employee uses the endpoint, it is public — do not put it behind SSO.</p>
+</section>
+
+<hr class="rule">
+
+<section class="sec" id="13-onboarding-checklist">
+<div class="sec-head"><span class="tag">§13</span><h2>Onboarding checklist</h2></div>
+<p><strong>Every mode:</strong></p>
+<ul class="checklist">
+<li>Register an OIDC client with the IdP (client id, secret, exact redirect URIs).</li>
+<li>Confirm whether a portal/launcher tile is needed, and add one.</li>
+<li>Confirm whether visibility should be restricted to specific groups.</li>
+<li>Confirm public/guest/external routes still work with no IdP.</li>
+<li>Use real, non-localhost redirect URIs and a real generated secret before any production deploy.</li>
+</ul>
+<p><strong>Mode A additionally:</strong></p>
+<ul class="checklist">
+<li>"Sign in with SSO" entry point + a callback route.</li>
+<li>Verify <code>iss</code>/<code>aud</code>/<code>nonce</code>/<code>email_verified</code> before trusting the token.</li>
+<li>JIT-provision by email; map <code>ad_groups</code> (or a resolved roles claim) to your app's own roles.</li>
+<li>Implement backchannel logout, if the app holds sensitive data.</li>
+</ul>
+<p><strong>Mode B additionally:</strong></p>
+<ul class="checklist">
+<li>A bridge module that provisions the app's user and mints its native credential.</li>
+<li>A group→role mapping table, if the app needs one.</li>
+<li>Start/callback routes that run the OIDC flow on the app's behalf.</li>
+<li>A same-origin gateway serving the app's frontend + API + a session-seeding endpoint.</li>
+<li>Point the app's frontend configuration at the gateway origin (config only, not auth code).</li>
+</ul>
+<p><strong>Mode C additionally:</strong></p>
+<ul class="checklist">
+<li>SSO login + callback routes alongside the existing local-login routes.</li>
+<li>Upsert-by-email into the existing user table (a random unusable password if the schema requires one).</li>
+<li>Call the app's existing token/session-issuance function — do not build a second one.</li>
+</ul>
+</section>
+
+<hr class="rule">
+
+    </div>
+  </main>
+</div>
+
+<a href="#top" class="backlink" id="backlink" aria-label="Back to top">↑</a>
+
+<script>
+(function(){
+  var side = document.getElementById('side');
+  var toggle = document.getElementById('navtoggle');
+  if (toggle) {
+    side.classList.add('collapsed');
+    toggle.addEventListener('click', function(){ side.classList.toggle('collapsed'); });
+  }
+
+  var links = Array.prototype.slice.call(document.querySelectorAll('nav.toc a'));
+  var sections = links.map(function(a){
+    var id = a.getAttribute('href').slice(1);
+    return document.getElementById(id);
+  });
+
+  function onScroll(){
+    var y = window.scrollY + 120;
+    var activeIdx = 0;
+    for (var i = 0; i < sections.length; i++){
+      if (sections[i] && sections[i].offsetTop <= y) activeIdx = i;
+    }
+    links.forEach(function(a, i){ a.classList.toggle('active', i === activeIdx); });
+
+    var back = document.getElementById('backlink');
+    if (back) back.classList.toggle('show', window.scrollY > 600);
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+</script>

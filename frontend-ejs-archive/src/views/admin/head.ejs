@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title><%= title %> · Admin · Example Corp SSO</title>
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('kg-theme');
+        var themes = ['light', 'dark-black', 'dark-blue'];
+        if (saved && themes.indexOf(saved) !== -1) {
+          document.documentElement.setAttribute('data-theme', saved);
+        } else {
+          var sys = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark-black' : 'light';
+          document.documentElement.setAttribute('data-theme', sys);
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <style>
+    :root { --bg:#f8fafc; --card:#ffffff; --ink:#0f172a; --muted:#64748b; --brand:#166534; --brand-ink:#fff; --border:#e2e8f0; --danger:#b91c1c; --danger-bg:#fef2f2; --danger-border:#fecaca; --code-bg:#f1f5f9; --badge-on-bg:#dcfce7; --badge-on-ink:#166534; --badge-off-bg:#f1f5f9; --badge-off-ink:#64748b; --input-bg:#ffffff; --sidebar-w:302px; --sidebar-bg:#ffffff; --sidebar-border:#e2e8f0; --sidebar-text:#64748b; --sidebar-text-hover:#334155; --sidebar-text-active:#0f172a; --sidebar-active-bg:#f1f5f9; --sidebar-active-border:#6366f1; --sidebar-hover-bg:#f8fafc; --sidebar-section-text:#94a3b8; --sidebar-logo-text:#0f172a; --sidebar-logo-sub:#64748b; }
+    :root[data-theme="dark-black"] { --bg:#0b1220; --card:#111a2e; --ink:#e2e8f0; --muted:#94a3b8; --brand:#22c55e; --brand-ink:#04140a; --border:#1e293b; --danger:#fca5a5; --danger-bg:#2a0e0e; --danger-border:#7f1d1d; --code-bg:#0f172a; --badge-on-bg:#052e16; --badge-on-ink:#4ade80; --badge-off-bg:#1e293b; --badge-off-ink:#94a3b8; --input-bg:#0f172a; --sidebar-bg:#050505; --sidebar-border:rgba(255,255,255,0.05); --sidebar-text:#6b7280; --sidebar-text-hover:#a8a8a8; --sidebar-text-active:#fafafa; --sidebar-active-bg:rgba(255,255,255,0.06); --sidebar-hover-bg:rgba(255,255,255,0.03); --sidebar-section-text:#4a4a4a; --sidebar-logo-text:#fafafa; --sidebar-logo-sub:#6b7280; }
+    :root[data-theme="dark-blue"] { --bg:#050d1e; --card:#091428; --ink:#e2eaf9; --muted:#607090; --brand:#64ffda; --brand-ink:#020612; --border:#172a48; --danger:#fca5a5; --danger-bg:#2a0e0e; --danger-border:#7f1d1d; --code-bg:#0a1628; --badge-on-bg:#0a1a3a; --badge-on-ink:#64ffda; --badge-off-bg:#0c1a30; --badge-off-ink:#5a6e8a; --input-bg:#0a1628; --sidebar-bg:#020612; --sidebar-border:rgba(100,255,218,0.08); --sidebar-text:#5a6e8a; --sidebar-text-hover:#8899bb; --sidebar-text-active:#e2eaf9; --sidebar-active-bg:rgba(100,255,218,0.10); --sidebar-hover-bg:rgba(255,255,255,0.04); --sidebar-section-text:#3a4e6a; --sidebar-logo-text:#e2eaf9; --sidebar-logo-sub:#5a6e8a; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); }
+    header { background:#0f172a; color:#fff; padding: 0 24px; display:flex; align-items:center; gap:16px; height:56px; }
+    header .brand { display:flex; align-items:center; gap:10px; font-weight:700; font-size:14px; }
+    header .brand .dot { width:28px; height:28px; border-radius:8px; background: var(--brand); display:grid; place-items:center; font-size:13px; }
+    header .who { font-size:12px; color:#94a3b8; margin-left:auto; }
+
+    .layout { display:flex; align-items:flex-start; }
+    .sidebar { width: var(--sidebar-w); flex-shrink:0; min-height: calc(100vh - 56px); padding: 16px 10px; position:relative; display:flex; flex-direction:column; background:var(--sidebar-bg, #0f172a); border-right:1px solid var(--sidebar-border, rgba(255,255,255,0.08)); }
+    .sidebar nav { display:flex; flex-direction:column; gap:2px; flex:1; }
+    .sidebar-bottom { border-top:1px solid var(--sidebar-border, rgba(255,255,255,0.06)); padding:8px 0; margin-top:auto; }
+    .sidebar-bottom .theme-selector { display:flex; align-items:center; gap:4px; padding:6px 8px; border-radius:8px; margin:0 4px 4px; }
+    .sidebar-bottom .theme-selector .theme-label { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--sidebar-text, #64748b); flex:1; }
+    .sidebar-bottom .theme-dot { width:16px; height:16px; border-radius:50%; cursor:pointer; transition:all .12s ease; border:2px solid transparent; flex-shrink:0; }
+    .sidebar-bottom .theme-dot:hover { opacity:0.8; }
+    .sidebar-bottom .theme-dot.light { background:#ffffff; border-color:#cbd5e1; }
+    .sidebar-bottom .theme-dot.dark-black { background:#0a0a0a; border-color:#333; }
+    .sidebar-bottom .theme-dot.dark-blue { background:#0a1628; border-color:#1e3a5f; }
+    :root[data-theme="light"] .sidebar-bottom .theme-dot.light { box-shadow: 0 0 0 2px var(--sidebar-bg, #0d0f1a), 0 0 0 3.5px #94a3b8; }
+    :root[data-theme="dark-black"] .sidebar-bottom .theme-dot.dark-black { box-shadow: 0 0 0 2px var(--sidebar-bg, #050505), 0 0 0 3.5px #64748b; }
+    :root[data-theme="dark-blue"] .sidebar-bottom .theme-dot.dark-blue { box-shadow: 0 0 0 2px var(--sidebar-bg, #020612), 0 0 0 3.5px #6366f1; }
+    .sidebar-signout { display:flex; align-items:center; gap:8px; width:100%; padding:8px 10px; border-radius:8px; border:none; background:transparent; color:var(--sidebar-text, #64748b); font-size:14px; font-weight:600; cursor:pointer; transition:all .12s ease; }
+    .sidebar-signout:hover { color:#f87171; background:rgba(239,68,68,0.08); }
+    .sidebar a, .sidebar summary { color:var(--sidebar-text, #64748b); text-decoration:none; font-size:14px; font-weight:600; padding:8px 10px; border-radius:8px; display:flex; align-items:center; gap:8px; cursor:pointer; list-style:none; transition:all .12s ease; }
+    .sidebar a::-webkit-details-marker { display:none; }
+    .sidebar summary::-webkit-details-marker { display:none; }
+    .sidebar a:hover{ color:var(--sidebar-text-hover, #fff); background:var(--sidebar-hover-bg, rgba(255,255,255,.08)); }
+    .sidebar a.active { color:var(--sidebar-text-active, #fff); background:var(--sidebar-active-bg, rgba(255,255,255,.08)); }
+    .sidebar summary:hover { color:var(--sidebar-text-hover, #fff); background:var(--sidebar-hover-bg, rgba(255,255,255,.06)); }
+    .sidebar details { margin:0; }
+    .sidebar details > summary::before { content:'▸'; font-size:10px; transition: transform .12s ease; display:inline-block; width:10px; }
+    .sidebar details[open] > summary::before { transform: rotate(90deg); }
+    .sidebar details .group-items { display:flex; flex-direction:column; gap:2px; padding-left:14px; margin-top:2px; }
+    .sidebar-resize-handle { position:absolute; right:0; top:0; bottom:0; width:4px; cursor:col-resize; transition:background .15s ease; }
+    .sidebar-resize-handle:hover { background:rgba(34,197,94,.4); }
+    main { flex:1; max-width: 1000px; margin: 0 auto; padding: 28px 24px 60px; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    h2 { font-size: 16px; margin: 28px 0 10px; }
+    .sub { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+    .card { background: var(--card); border:1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 18px; }
+    table { width:100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align:left; padding: 9px 10px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+    tr:last-child td { border-bottom:none; }
+    a.link { color: var(--brand); text-decoration:none; font-weight:600; }
+    a.link:hover { text-decoration:underline; }
+    .btn { display:inline-block; padding: 8px 14px; border:0; border-radius: 8px; background: var(--brand); color:#fff; font-weight:600; font-size:13px; cursor:pointer; text-decoration:none; }
+    .btn.secondary { background: var(--card); color: var(--ink); border:1px solid var(--border); }
+    .btn.danger { background: var(--card); color: var(--danger); border:1px solid var(--danger-border); }
+    .btn:hover { filter: brightness(1.08); }
+    input[type=text], input[type=email], input[type=password], select { padding: 9px 10px; border:1px solid var(--border); border-radius: 8px; font-size: 13px; background: var(--input-bg); color: var(--ink); }
+    label { display:block; font-size: 12px; font-weight:600; margin: 10px 0 5px; color:var(--muted); }
+    .row { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; }
+    .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; }
+    .badge.on { background: var(--badge-on-bg); color: var(--badge-on-ink); }
+    .badge.off { background: var(--badge-off-bg); color: var(--badge-off-ink); }
+    .error { background: var(--danger-bg); color: var(--danger); border:1px solid var(--danger-border); padding: 10px 12px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; }
+    .muted { color: var(--muted); }
+    .stat { font-size: 28px; font-weight:700; }
+    .stats { display:flex; gap:16px; }
+    .stats .card { flex:1; }
+    .checks { display:flex; gap:16px; margin: 8px 0 16px; }
+    .checks label { display:flex; align-items:center; gap:6px; font-weight:500; color: var(--ink); margin:0; }
+    code.dn { font-size:12px; background: var(--code-bg); padding:2px 6px; border-radius:6px; word-break:break-all; }
+    /* 3-circle theme selector */
+    .theme-selector { display:flex; align-items:center; gap:4px; padding:4px 6px; border-radius:8px; border:1px solid var(--border); background: var(--card); }
+    .theme-selector .theme-label { font-size:8px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); margin-right:2px; }
+    .theme-dot { width:16px; height:16px; border-radius:50%; cursor:pointer; transition: all .12s ease; border:2px solid transparent; flex-shrink:0; }
+    .theme-dot:hover { opacity:0.8; }
+    .theme-dot.light { background:#ffffff; border-color:#cbd5e1; }
+    .theme-dot.dark-black { background:#0a0a0a; border-color:#333; }
+    .theme-dot.dark-blue { background:#0a1628; border-color:#1e3a5f; }
+    :root[data-theme="light"] .theme-dot.light { box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px #94a3b8; }
+    :root[data-theme="dark-black"] .theme-dot.dark-black { box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px #64748b; }
+    :root[data-theme="dark-blue"] .theme-dot.dark-blue { box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px #6366f1; }
+  </style>
+</head>
+<body>
+  <%
+    const __path = typeof currentPath !== 'undefined' ? currentPath : '';
+    const __isActive = (href) => href === '/admin' ? __path === '/admin' : (__path === href || __path.startsWith(href + '/'));
+    const __navSections = [
+      { href: '/admin', label: 'Dashboard' },
+      { group: 'Identity', items: [
+        { href: '/admin/users', label: 'Users' },
+        { href: '/admin/groups', label: 'Groups' },
+        { href: '/admin/dms-roles', label: 'DMS Roles' },
+      ] },
+      { href: '/admin/clients', label: 'Clients' },
+      { group: 'Security', items: [
+        { href: '/admin/sessions', label: 'Sessions' },
+        { href: '/admin/logins', label: 'Sign-ins' },
+        { href: '/admin/keys', label: 'Keys' },
+        { href: '/admin/audit', label: 'Audit' },
+      ] },
+    ];
+  %>
+  <header>
+    <div class="brand"><span class="dot">K</span> Admin</div>
+    <div class="who">
+      <span><%= typeof adminEmail !== 'undefined' ? adminEmail : '' %> · <a href="/portal" style="color:#cbd5e1;">Back to portal</a></span>
+    </div>
+  </header>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-resize-handle" id="sidebarResizeHandle"></div>
+      <nav>
+        <% __navSections.forEach(function(section) { %>
+          <% if (section.group) { %>
+            <% const hasActiveChild = section.items.some((i) => __isActive(i.href)); %>
+            <details class="nav-group"<%= hasActiveChild ? ' open' : '' %>>
+              <summary><%= section.group %></summary>
+              <div class="group-items">
+                <% section.items.forEach(function(item) { %>
+                  <a href="<%= item.href %>" class="<%= __isActive(item.href) ? 'active' : '' %>"><%= item.label %></a>
+                <% }); %>
+              </div>
+            </details>
+          <% } else { %>
+            <a href="<%= section.href %>" class="<%= __isActive(section.href) ? 'active' : '' %>"><%= section.label %></a>
+          <% } %>
+        <% }); %>
+      </nav>
+      <!-- Sidebar bottom: theme selector + signout (matching DMS layout) -->
+      <div class="sidebar-bottom">
+        <div class="theme-selector">
+          <span class="theme-label">Theme</span>
+          <button type="button" class="theme-dot light" onclick="__kgSetTheme('light')" aria-label="Light theme" title="Light"></button>
+          <button type="button" class="theme-dot dark-black" onclick="__kgSetTheme('dark-black')" aria-label="Black theme" title="Black"></button>
+          <button type="button" class="theme-dot dark-blue" onclick="__kgSetTheme('dark-blue')" aria-label="Blue theme" title="Blue"></button>
+        </div>
+        <form method="post" action="/portal/logout" style="margin:0; padding:0 4px;">
+          <input type="hidden" name="csrf" value="<%= typeof logoutCsrf !== 'undefined' ? logoutCsrf : '' %>" />
+          <button type="submit" class="sidebar-signout">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Sign out
+          </button>
+        </form>
+      </div>
+    </aside>
+    <main>

@@ -1,0 +1,67 @@
+<%- include('head', { title: 'Sessions', adminEmail }) %>
+  <h1>Live sessions</h1>
+  <p class="sub">Every live credential the IdP controls. Kill one session, or sign a user out of everything at once.</p>
+
+  <div class="card">
+    <p class="sub" style="margin:0 0 8px; font-weight:600;">Sign a user out everywhere</p>
+    <form method="post" action="/admin/sessions/signout-user" class="row">
+      <input type="hidden" name="csrf" value="<%= csrf %>" />
+      <input name="email" type="email" required placeholder="user@examplecorp.com" style="width:300px;" />
+      <button class="btn danger" type="submit">Sign out everywhere</button>
+    </form>
+    <p class="sub" style="margin:8px 0 0;">Revokes their SSO session, portal &amp; gateway sessions, GMS sessions, and notifies DMS.</p>
+  </div>
+
+  <h2>SSO sessions (oidc-provider)</h2>
+  <div class="card">
+    <% if (ssoSessions.length === 0) { %><p class="muted">None.</p><% } else { %>
+    <table>
+      <thead><tr><th>User</th><th>Created</th><th>Expires</th><th></th></tr></thead>
+      <tbody>
+        <% ssoSessions.forEach(function(s){ %>
+        <tr>
+          <td><%= s.email || '(unknown account)' %></td>
+          <td class="muted"><%= new Date(s.created_at).toLocaleString() %></td>
+          <td class="muted"><%= s.expires_at ? new Date(s.expires_at).toLocaleString() : '—' %></td>
+          <td style="text-align:right;">
+            <form method="post" action="/admin/sessions/kill" style="display:inline;">
+              <input type="hidden" name="csrf" value="<%= csrf %>" />
+              <input type="hidden" name="kind" value="sso" />
+              <input type="hidden" name="key" value="<%= s.key %>" />
+              <button class="btn danger" type="submit" style="padding:4px 10px; font-size:12px;">Kill</button>
+            </form>
+          </td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+
+  <h2>Portal &amp; gateway sessions</h2>
+  <div class="card">
+    <% if (webSessions.length === 0) { %><p class="muted">None.</p><% } else { %>
+    <table>
+      <thead><tr><th>Kind</th><th>User</th><th>Created</th><th>Expires</th><th></th></tr></thead>
+      <tbody>
+        <% webSessions.forEach(function(s){ %>
+        <tr>
+          <td><span class="badge <%= s.kind === 'portal' ? 'on' : 'off' %>"><%= s.kind %></span></td>
+          <td><%= s.email || '—' %></td>
+          <td class="muted"><%= new Date(s.created_at).toLocaleString() %></td>
+          <td class="muted"><%= new Date(s.expires_at).toLocaleString() %></td>
+          <td style="text-align:right;">
+            <form method="post" action="/admin/sessions/kill" style="display:inline;">
+              <input type="hidden" name="csrf" value="<%= csrf %>" />
+              <input type="hidden" name="kind" value="<%= s.kind %>" />
+              <input type="hidden" name="key" value="<%= s.key %>" />
+              <button class="btn danger" type="submit" style="padding:4px 10px; font-size:12px;">Kill</button>
+            </form>
+          </td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+<%- include('foot') %>

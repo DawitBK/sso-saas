@@ -1,0 +1,52 @@
+{
+  "name": "@examplecorp/sso-frontend",
+  "version": "2.0.0",
+  "description": "Example Corp SSO Frontend — Next.js TypeScript implementation",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "scripts": {
+    "dev": "next dev -p 7301",
+    "build": "next build",
+    "postbuild": "node scripts/build-fingerprint.cjs write .env.production",
+    "start": "node scripts/start-standalone.cjs 7301",
+    "e2e": "playwright test",
+    "build:mirror": "node scripts/build-mirror.cjs",
+    "start:mirror": "node scripts/start-mirror.cjs",
+    "start:supervised": "node ../deploy/supervise.cjs --name sso-frontend --env NODE_ENV=production --env PORT=7301 --health http://{HOST}:{PORT}/ -- node scripts/start-standalone.cjs",
+    "start:mirror:supervised": "node ../deploy/supervise.cjs --name sso-frontend --env NODE_ENV=mirror --env-file .env.mirror --health http://{HOST}:{PORT}/ -- node scripts/start-mirror.cjs",
+    "stop:supervised": "node ../deploy/supervise.cjs --stop sso-frontend",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.59.20",
+    "lucide-react": "^0.468.0",
+    "next": "^16.3.4",
+    "qrcode": "1.5.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-hot-toast": "^2.6.0",
+    "zustand": "^4.5.5"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@playwright/test": "^1.62.0",
+    "@types/node": "^22.9.0",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.4",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "typescript": "^5.6.3"
+  },
+  "overrides": {
+    "postcss": "$postcss",
+    "sharp": "^0.35.4"
+  }
+}

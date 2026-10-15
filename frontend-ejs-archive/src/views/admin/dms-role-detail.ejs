@@ -1,0 +1,31 @@
+<%- include('head', { title: roleName || 'DMS Role', adminEmail }) %>
+  <p class="sub" style="margin-bottom:6px;"><a class="link" href="/admin/dms-roles">← All DMS roles</a></p>
+  <h1><%= roleName || roleId %></h1>
+  <p class="sub" style="margin:8px 0 20px;">Default permissions for this role — tenant <code class="dn"><%= tenant %></code>.</p>
+
+  <div class="card">
+    <% if (error) { %>
+      <p class="sub" style="margin:0; color:#b91c1c;"><%= error %></p>
+    <% } else { %>
+      <p class="sub" style="margin:0 0 14px;">
+        This is a full replace — every user with this role gets exactly this permission set, except users with
+        their own per-user override (see "Customize DMS permissions" on their user page).
+      </p>
+      <form method="post" action="/admin/dms-roles/detail">
+        <input type="hidden" name="csrf" value="<%= csrf %>" />
+        <input type="hidden" name="roleId" value="<%= roleId %>" />
+        <% groups.forEach(function(g){ %>
+          <div style="margin-bottom:14px;">
+            <p style="margin:0 0 6px; font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted);"><%= g.group %></p>
+            <div class="checks" style="flex-wrap:wrap;">
+              <% g.permissions.forEach(function(p){ %>
+                <label><input type="checkbox" name="permissions" value="<%= p.value %>" <%= checked.has(p.value) ? 'checked' : '' %> /> <%= p.label %></label>
+              <% }); %>
+            </div>
+          </div>
+        <% }); %>
+        <button class="btn" type="submit">Save role permissions</button>
+      </form>
+    <% } %>
+  </div>
+<%- include('foot') %>

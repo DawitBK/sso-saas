@@ -1,0 +1,42 @@
+<%- include('head', { title: 'Users', adminEmail }) %>
+  <div style="display:flex; align-items:center; justify-content:space-between;">
+    <div>
+      <h1>Users</h1>
+      <p class="sub" style="margin:0 0 20px;">Local IdP accounts (AD users authenticate directly and don't appear here).</p>
+    </div>
+    <a class="btn" href="/admin/users/new">+ New user</a>
+  </div>
+
+  <div class="card">
+    <form method="get" action="/admin/users" class="row" style="margin-bottom: <%= users.length ? '14px' : '0' %>;">
+      <input type="text" name="q" placeholder="Search by email" value="<%= q %>" />
+      <button class="btn secondary" type="submit">Search</button>
+    </form>
+    <% if (users.length === 0) { %>
+      <p class="muted">No users found.</p>
+    <% } else { %>
+    <table>
+      <thead><tr><th>Email</th><th>Name</th><th>Groups</th><th>Status</th><th>Last login</th><th></th></tr></thead>
+      <tbody>
+        <% users.forEach(function(u){ %>
+        <tr>
+          <td><%= u.email %></td>
+          <td><%= [u.given_name, u.family_name].filter(Boolean).join(' ') || '—' %></td>
+          <td><%= u.group_count %></td>
+          <td><span class="badge <%= u.is_active ? 'on' : 'off' %>"><%= u.is_active ? 'Active' : 'Disabled' %></span></td>
+          <td class="muted"><%= u.last_login_at ? new Date(u.last_login_at).toLocaleString() : 'never' %></td>
+          <td><a class="link" href="/admin/users/<%= u.id %>">Manage →</a></td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    <% if (totalPages > 1) { %>
+    <div style="display:flex; align-items:center; gap:12px; margin-top:14px;">
+      <% if (page > 1) { %><a class="btn secondary" href="/admin/users?q=<%= encodeURIComponent(q) %>&page=<%= page - 1 %>">← Prev</a><% } %>
+      <span class="muted" style="font-size:12px;">Page <%= page %> of <%= totalPages %> (<%= total %> users)</span>
+      <% if (page < totalPages) { %><a class="btn secondary" href="/admin/users?q=<%= encodeURIComponent(q) %>&page=<%= page + 1 %>">Next →</a><% } %>
+    </div>
+    <% } %>
+    <% } %>
+  </div>
+<%- include('foot') %>

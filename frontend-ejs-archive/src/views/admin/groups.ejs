@@ -1,0 +1,23 @@
+<%- include('head', { title: 'Groups', adminEmail }) %>
+  <h1>Groups</h1>
+  <p class="sub">Every group that has members, an app entitlement, or a role mapping anywhere in the system.</p>
+
+  <div class="card">
+    <% if (groups.length === 0) { %>
+      <p class="muted">No groups yet — add a user to a group from their user page.</p>
+    <% } else { %>
+    <table>
+      <thead><tr><th>Group</th><th>Members</th><th></th></tr></thead>
+      <tbody>
+        <% groups.forEach(function(g){ %>
+        <tr>
+          <td><code class="dn"><%= g.dn %></code></td>
+          <td><%= g.memberCount %></td>
+          <td><a class="link" href="/admin/groups/detail?dn=<%= encodeURIComponent(g.dn) %>">Configure access →</a></td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+<%- include('foot') %>

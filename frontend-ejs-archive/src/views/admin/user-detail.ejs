@@ -1,0 +1,235 @@
+<%- include('head', { title: user.email, adminEmail }) %>
+  <p class="sub" style="margin-bottom:6px;"><a class="link" href="/admin/users">← All users</a></p>
+  <div style="display:flex; align-items:center; justify-content:space-between;">
+    <div>
+      <h1><%= user.email %></h1>
+      <p class="sub" style="margin:0 0 20px;">
+        <%= [user.given_name, user.family_name].filter(Boolean).join(' ') || 'No name set' %>
+        · <span class="badge <%= user.is_active ? 'on' : 'off' %>"><%= user.is_active ? 'Active' : 'Disabled' %></span>
+        · source: <%= user.source %>
+      </p>
+    </div>
+    <form method="post" action="/admin/users/<%= user.id %>/toggle-active">
+      <input type="hidden" name="csrf" value="<%= csrf %>" />
+      <button class="btn <%= user.is_active ? 'danger' : 'secondary' %>" type="submit">
+        <%= user.is_active ? 'Disable account' : 'Re-enable account' %>
+      </button>
+    </form>
+  </div>
+
+  <h2>Live status in each system <span class="muted" style="font-weight:400; font-size:12px;">(authoritative — read from the app's own database)</span></h2>
+  <div class="card">
+    <p class="sub" style="margin:0 0 12px;">Each system owns its users after their first sign-in. Roles revoked or granted inside DMS or GMS stick, apply to the next SSO login automatically, and are shown here.</p>
+    <% if (!user.is_active) { %>
+      <p class="sub" style="margin:0 0 12px; padding:10px 12px; background:#fff7ed; border:1px solid #fdba74; border-radius:6px; color:#9a3412;">
+        <strong>Note:</strong> disabling this account ends its IdP/portal session and stops new sign-ins, but a
+        bearer token already issued to it before disabling is stateless and keeps working until it naturally
+        expires — up to <strong>1 hour</strong> for a DMS access token or <strong>8 hours</strong> for a GMS one
+        (see the IdP/GMS token TTL config). "Disabled" here and "Active" in the tables below at the same time is
+        expected during that window, not a sync bug — it does not mean the account can still sign in.
+      </p>
+    <% } %>
+    <table>
+      <thead><tr><th>System</th><th>Account</th><th>Current roles</th><th>Office</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>DMS (EDAMS)</td>
+          <% if (liveDms.error) { %>
+            <td colspan="3" style="color:#b91c1c;"><%= liveDms.error %></td>
+          <% } else if (!liveDms.exists) { %>
+            <td colspan="3" class="muted">Not provisioned yet — created automatically at first SSO sign-in.</td>
+          <% } else { %>
+            <td><span class="badge <%= liveDms.active ? 'on' : 'off' %>"><%= liveDms.active ? 'Active' : 'Disabled' %></span></td>
+            <td><strong><%= liveDms.roles.length ? liveDms.roles.join(', ') : '(none)' %></strong></td>
+            <td class="muted">—</td>
+          <% } %>
+        </tr>
+        <tr>
+          <td>GMS</td>
+          <% if (liveGms.error) { %>
+            <td colspan="3" style="color:#b91c1c;"><%= liveGms.error %></td>
+          <% } else if (!liveGms.exists) { %>
+            <td colspan="3" class="muted">Not provisioned yet — created automatically at first SSO sign-in.</td>
+          <% } else { %>
+            <td><span class="badge <%= liveGms.active ? 'on' : 'off' %>"><%= liveGms.active ? 'Active' : 'Disabled' %></span></td>
+            <td><strong><%= liveGms.roles.length ? liveGms.roles.join(', ') : '(none)' %></strong></td>
+            <td><%
+              const liveOffice = offices.find(function(o){ return o.id === liveGms.officeId; });
+            %><%= liveGms.officeId === null ? '—' : (liveOffice ? liveOffice.name : 'office #' + liveGms.officeId) %></td>
+          <% } %>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Initial system access <span class="muted" style="font-weight:400; font-size:12px;">(first sign-in defaults)</span></h2>
+  <div class="card">
+    <p class="sub" style="margin:0 0 14px;">The role each system assigns this user at their <strong>first</strong> SSO sign-in. Once provisioned (see live status above), the system itself owns the assignment — its admins can revoke, upgrade, or customize it there without the IdP overriding them.</p>
+    <form method="post" action="/admin/users/<%= user.id %>/access" class="row" style="align-items:flex-end;">
+      <input type="hidden" name="csrf" value="<%= csrf %>" />
+      <div>
+        <label for="dms_role">DMS (EDAMS) role</label>
+        <select id="dms_role" name="dms_role" <%= dmsConnected ? '' : 'disabled' %>>
+          <option value="">— No access —</option>
+          <% dmsRoles.forEach(function(r){ %><option value="<%= r %>" <%= access.dmsRole === r ? 'selected' : '' %>><%= r %></option><% }); %>
+        </select>
+      </div>
+      <div>
+        <label for="gms_role">GMS role</label>
+        <select id="gms_role" name="gms_role" onchange="toggleOffice()">
+          <option value="">— No access —</option>
+          <% gmsRoles.forEach(function(r){ %><option value="<%= r %>" <%= access.gmsRole === r ? 'selected' : '' %>><%= r %></option><% }); %>
+        </select>
+      </div>
+      <div id="office-field" style="display:none;">
+        <label for="office_id">Office <span class="muted" style="font-weight:400;">(required for admin/reception/host)</span></label>
+        <% if (officesError) { %>
+          <p class="sub" style="color:#b91c1c; margin:0;"><%= officesError %></p>
+        <% } else { %>
+        <select id="office_id" name="office_id">
+          <option value="">— Select an office —</option>
+          <% offices.forEach(function(o){ %><option value="<%= o.id %>" <%= access.officeId === o.id ? 'selected' : '' %>><%= o.name %></option><% }); %>
+        </select>
+        <% } %>
+      </div>
+      <div>
+        <label for="is_admin">IdP Administrator</label>
+        <label style="font-weight:400; color:var(--ink); display:flex; align-items:center; gap:6px; margin:0; padding:9px 0;">
+          <input type="checkbox" id="is_admin" name="is_admin" <%= isAdmin ? 'checked' : '' %> /> Grant admin console access
+        </label>
+      </div>
+      <button class="btn" type="submit">Save access</button>
+    </form>
+    <% if (access.dmsError) { %><p class="sub" style="margin:12px 0 0; color:#b91c1c;"><%= access.dmsError %></p><% } %>
+    <p class="sub" style="margin:12px 0 0;">
+      Initial defaults: DMS —
+      <strong><%= access.dmsRole || 'no access' %></strong>
+      · GMS — <strong><%= access.gmsRole || 'no access' %></strong><% if (access.gmsRole && access.officeId) { %> @ office #<%= access.officeId %><% } %>
+    </p>
+  </div>
+
+  <script>
+    const OFFICE_SCOPED = <%- JSON.stringify(gmsOfficeScopedRoles) %>;
+    function toggleOffice() {
+      const role = document.getElementById('gms_role').value;
+      document.getElementById('office-field').style.display = OFFICE_SCOPED.includes(role) ? 'block' : 'none';
+    }
+    toggleOffice();
+  </script>
+
+  <% if (access.dmsRole && liveDms.exists) { %>
+  <h2>Customize DMS permissions <span class="muted" style="font-weight:400; font-size:12px;">(grants/revokes on top of the <%= access.dmsRole %> role's defaults)</span></h2>
+  <div class="card">
+    <% if (dmsPermissionsError) { %>
+      <p class="sub" style="margin:0; color:#b91c1c;"><%= dmsPermissionsError %></p>
+    <% } else if (dmsPermissions) { %>
+      <p class="sub" style="margin:0 0 14px;">
+        Checked = this user effectively has the permission. Unchecking a role default revokes it for this user
+        only; checking an extra one grants it for this user only — the <%= access.dmsRole %> role itself is
+        unchanged (edit role defaults on the <a class="link" href="/admin/dms-roles">DMS Roles</a> page).
+      </p>
+      <form method="post" action="/admin/users/<%= user.id %>/dms-permissions">
+        <input type="hidden" name="csrf" value="<%= csrf %>" />
+        <% dmsPermissionGroups.forEach(function(g){ %>
+          <div style="margin-bottom:14px;">
+            <p style="margin:0 0 6px; font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted);"><%= g.group %></p>
+            <div class="checks" style="flex-wrap:wrap;">
+              <% g.permissions.forEach(function(p){ %>
+                <label><input type="checkbox" name="permissions" value="<%= p.value %>" <%= dmsPermissions.effective.has(p.value) ? 'checked' : '' %> /> <%= p.label %></label>
+              <% }); %>
+            </div>
+          </div>
+        <% }); %>
+        <button class="btn" type="submit">Save DMS permissions</button>
+      </form>
+    <% } %>
+  </div>
+  <% } %>
+
+  <h2>Security</h2>
+  <div class="card">
+    <p class="sub" style="margin:0 0 12px;">Resetting the password signs the user out of everything (SSO, portal, GMS) and forces them to choose a new password at their next sign-in.</p>
+    <form method="post" action="/admin/users/<%= user.id %>/reset-password" class="row">
+      <input type="hidden" name="csrf" value="<%= csrf %>" />
+      <div>
+        <label for="reset_password">Temporary password</label>
+        <input id="reset_password" name="password" type="text" required minlength="8" placeholder="At least 8 characters" style="width:280px;" />
+      </div>
+      <button class="btn danger" type="submit">Reset password &amp; sign out everywhere</button>
+    </form>
+    <% if (user.must_change_password) { %>
+      <p class="sub" style="margin:12px 0 0; color:#b45309;">A reset is pending — this user must set a new password at their next sign-in.</p>
+    <% } %>
+    <hr style="border:none; border-top:1px solid var(--border); margin:16px 0;" />
+    <p class="sub" style="margin:0 0 8px;">
+      Two-factor auth: <strong><%= user.totp_enabled ? 'ON' : 'off' %></strong>
+      <% if (!user.totp_enabled) { %><span class="muted">(users enroll themselves at Portal → Security)</span><% } %>
+    </p>
+    <% if (user.totp_enabled) { %>
+    <form method="post" action="/admin/users/<%= user.id %>/mfa-reset">
+      <input type="hidden" name="csrf" value="<%= csrf %>" />
+      <button class="btn secondary" type="submit">Remove two-factor auth (lost device)</button>
+    </form>
+    <% } %>
+  </div>
+
+  <h2>Change history <span class="muted" style="font-weight:400; font-size:12px;">(admin actions affecting this user)</span></h2>
+  <div class="card">
+    <% if (history.length === 0) { %>
+      <p class="muted">No recorded changes yet.</p>
+    <% } else { %>
+    <table>
+      <thead><tr><th>When</th><th>By</th><th>Action</th><th>Detail</th></tr></thead>
+      <tbody>
+        <% history.forEach(function(h){ %>
+        <tr>
+          <td class="muted" style="white-space:nowrap;"><%= new Date(h.created_at).toLocaleString() %></td>
+          <td><%= h.actor_email %></td>
+          <td><code class="dn"><%= h.action %></code></td>
+          <td class="muted" style="font-size:12px; word-break:break-all;"><%= JSON.stringify(h.detail) %></td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+
+  <h2>Additional shared groups <span class="muted" style="font-weight:400; font-size:12px;">(advanced)</span></h2>
+  <div class="card">
+    <p class="sub" style="margin:0 0 12px;">For AD groups or team-wide access shared by many users. Most users only need the System access section above.</p>
+    <% if (groups.length === 0) { %>
+      <p class="muted" style="margin-bottom:14px;">Not in any additional group.</p>
+    <% } else { %>
+    <table style="margin-bottom:14px;">
+      <thead><tr><th>Group</th><th></th></tr></thead>
+      <tbody>
+        <% groups.forEach(function(g){ %>
+        <tr>
+          <td><code class="dn"><%= g %></code> <a class="link" style="margin-left:8px; font-size:12px;" href="/admin/groups/detail?dn=<%= encodeURIComponent(g) %>">configure →</a></td>
+          <td style="text-align:right;">
+            <form method="post" action="/admin/users/<%= user.id %>/groups/remove" style="display:inline;">
+              <input type="hidden" name="csrf" value="<%= csrf %>" />
+              <input type="hidden" name="group_dn" value="<%= g %>" />
+              <button class="btn danger" type="submit" style="padding:4px 10px; font-size:12px;">Remove</button>
+            </form>
+          </td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    <% } %>
+
+    <form method="post" action="/admin/users/<%= user.id %>/groups" class="row">
+      <input type="hidden" name="csrf" value="<%= csrf %>" />
+      <div>
+        <label for="group_dn">Add to group</label>
+        <select id="group_dn" name="group_dn" style="width:420px;">
+          <option value="">— Select a group —</option>
+          <% knownGroups.forEach(function(g){ %><option value="<%= g %>"><%= g %></option><% }); %>
+        </select>
+        <p class="sub" style="margin:4px 0 0;">Onboarding a brand-new AD group: open <code class="dn">/admin/groups/detail?dn=&lt;the new DN&gt;</code> to give it an app/role first — it'll appear in this list afterward.</p>
+      </div>
+      <button class="btn secondary" type="submit">Add</button>
+    </form>
+  </div>
+<%- include('foot') %>

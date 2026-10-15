@@ -1,0 +1,41 @@
+<%- include('head', { title: 'OIDC clients', adminEmail }) %>
+  <h1>OIDC clients (relying parties)</h1>
+  <p class="sub">Every app registered to sign in through this IdP — the same registry the GMS/EDAMS bridges use. Read-only:
+    registration (redirect URIs, activation) is set via server configuration (<code class="dn">clientSeed</code> in
+    <code class="dn">src/config.ts</code> / env vars) and requires a restart to take effect, so this page will not
+    let you edit it — it exists purely so admins and auditors can see what's registered without reading source. Client
+    secrets are never shown here.</p>
+
+  <div class="card">
+    <% if (clients.length === 0) { %>
+      <p class="muted">No clients registered.</p>
+    <% } else { %>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>client_id</th>
+          <th>Status</th>
+          <th>Grant types</th>
+          <th>Redirect URIs</th>
+          <th>Post-logout redirect URIs</th>
+          <th>Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% clients.forEach(function(c){ %>
+        <tr>
+          <td><%= c.name %></td>
+          <td><code class="dn"><%= c.client_id %></code></td>
+          <td><span class="badge <%= c.is_active ? 'on' : 'off' %>"><%= c.is_active ? 'Active' : 'Disabled' %></span></td>
+          <td class="muted" style="font-size:12px;"><%= (c.grant_types || []).join(', ') %></td>
+          <td style="font-size:12px; word-break:break-all; max-width:240px;"><%= (c.redirect_uris || []).join(', ') || '—' %></td>
+          <td style="font-size:12px; word-break:break-all; max-width:240px;"><%= (c.post_logout_redirect_uris || []).join(', ') || '—' %></td>
+          <td class="muted" style="white-space:nowrap;"><%= new Date(c.updated_at).toLocaleString() %></td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+<%- include('foot') %>
