@@ -22,10 +22,12 @@ import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { IDP_CONFIG } from '../config.js';
 import { logger } from '../logging/logger.js';
 import { computeLicenseState } from './state.js';
+import { computeEntitlement } from './entitlement.js';
 import { ownLicenseRecord } from './status.js';
 import type { LicenseEnforcement } from './enforcement.js';
 
 export const LICENSE_EXPIRED_MESSAGE = 'The licence has expired; the system is read-only. Contact your administrator.';
+export const LICENSE_REQUIRED_MESSAGE = 'This system is not licensed. Contact your administrator.';
 
 export const READ_ONLY_ALLOWLIST: readonly string[] = [
   '/interaction', '/authorize', '/token', '/me', '/session', '/device', '/.well-known', '/jwks',
@@ -48,6 +50,8 @@ export interface GuardDeps {
   mode: () => LicenseEnforcement;
   /** Whether SSO's own licence is expired right now. Must not throw; fail open (false) when it cannot tell. */
   expired: () => Promise<boolean>;
+  /** Whether SSO must refuse everything off the allowlist: LICENSE_REQUIRED is true and SSO has no licence. Must not throw; fail open (false). */
+  unlicensed: () => Promise<boolean>;
 }
 
 const defaultDeps: GuardDeps = {
@@ -59,7 +63,23 @@ const defaultDeps: GuardDeps = {
       return false;
     }
   },
+  unlicensed: async () => {
+    try {
+      if (!IDP_CONFIG.licenseRequired) return false;
+      const record = await ownLicenseRecord();
+      const state = computeLicenseState(record, Date.now()).state;
+      return !computeEntitlement({ required: true, state, modes: record?.modes, deployment: 'sso' }).licensed;
+    } catch {
+      return false;
+    }
+  },
 };
+
+/** An OIDC authorisation for anyone but the portal itself is how another system signs people in: unlicensed, SSO serves no other system. */
+function isRelyingPartyAuthorize(req: Request): boolean {
+  const p = req.path.length > 1 ? req.path.replace(/\/+$/, '') : req.path;
+  return (p === '/authorize' || p === '/auth') && String(req.query.client_id ?? '') !== 'portal';
+}
 
 let lastWarnAt = 0;
 
@@ -67,7 +87,27 @@ export function licenseReadOnlyGuard(deps: GuardDeps = defaultDeps): RequestHand
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const mode = deps.mode();
-      if (mode === 'off' || SAFE_METHODS.has(req.method) || isAllowlisted(req.path)) {
+      if (mode === 'off') {
+        next();
+        return;
+      }
+      // Section 9: required and unlicensed, SSO serves nothing off the allowlist (any method) and no relying party's sign-in. Nothing is deleted.
+      if ((!isAllowlisted(req.path) || isRelyingPartyAuthorize(req)) && (await deps.unlicensed())) {
+        if (mode === 'warn') {
+          if (Date.now() - lastWarnAt > 60_000) {
+            lastWarnAt = Date.now();
+            logger.warn({ method: req.method, path: req.path }, '[idp:license] SSO has no licence and LICENSE_REQUIRED is true; LICENSE_ENFORCEMENT=warn, so this request was NOT refused');
+          }
+          next();
+          return;
+        }
+        res.status(403).json({
+          error: { code: 'LICENSE_REQUIRED', message: LICENSE_REQUIRED_MESSAGE },
+          meta: { requestId: String(res.locals.requestId ?? '') },
+        });
+        return;
+      }
+      if (SAFE_METHODS.has(req.method) || isAllowlisted(req.path)) {
         next();
         return;
       }

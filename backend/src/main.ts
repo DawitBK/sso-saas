@@ -20,6 +20,8 @@
  * lives entirely in gateway/server.ts on its own port; this one was removed.)
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
 import { edgeClientIp } from './http/client-ip.js';
 import express from 'express';
 import helmet from 'helmet';
@@ -157,6 +159,16 @@ async function main(): Promise<void> {
     logger.warn({ value: process.env.LICENSE_ENFORCEMENT }, '[idp:license] LICENSE_ENFORCEMENT is not enforce, warn or off; using the default (enforce)');
   } else if (IDP_CONFIG.licenseEnforcement !== 'enforce') {
     logger.warn({ mode: IDP_CONFIG.licenseEnforcement }, '[idp:license] LICENSE_ENFORCEMENT is not "enforce": SSO’s own licence will not make it read-only');
+  }
+  // Per-application entitlement (docs/operations/PLATFORM-LICENSING.md section 9). Each of these is a way a production SSO ends up serving without a licence.
+  if (IDP_CONFIG.isProd && !IDP_CONFIG.licenseRequired) {
+    logger.error({ explicit: IDP_CONFIG.licenseRequiredExplicit }, '[idp:license:ALERT] LICENSE_REQUIRED is false in a production process: SSO and the systems behind it can be used without a licence');
+  }
+  if (IDP_CONFIG.licenseRequired && IDP_CONFIG.licenseEnforcement !== 'enforce') {
+    logger.error({ mode: IDP_CONFIG.licenseEnforcement }, '[idp:license:ALERT] LICENSE_REQUIRED is true but LICENSE_ENFORCEMENT is not "enforce": the licence requirement is not being applied');
+  }
+  if (IDP_CONFIG.licenseSigningKeyFile && !fs.existsSync(IDP_CONFIG.licenseSigningKeyFile)) {
+    logger.error({ file: path.basename(IDP_CONFIG.licenseSigningKeyFile) }, '[idp:license:ALERT] LICENSE_SIGNING_KEY_FILE does not exist: licence tokens cannot be signed, systems keep their last token');
   }
 
   const provider = await buildProvider();

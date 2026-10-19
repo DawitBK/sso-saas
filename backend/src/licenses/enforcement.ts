@@ -7,6 +7,18 @@
  */
 export type LicenseEnforcement = 'enforce' | 'warn' | 'off';
 
+/**
+ * LICENSE_REQUIRED (docs/operations/PLATFORM-LICENSING.md section 9): whether the system may be used at all without a verified licence.
+ * Default true in production (live and the mirror), false elsewhere so development and tests are unchanged. `explicit` says the value came from the
+ * environment, so a production process that turned it off can be reported at every start.
+ */
+export function parseLicenseRequired(raw: string | undefined, isProd: boolean): { required: boolean; explicit: boolean } {
+  const v = (raw ?? '').trim().toLowerCase();
+  if (v === 'true') return { required: true, explicit: true };
+  if (v === 'false') return { required: false, explicit: true };
+  return { required: isProd, explicit: false };
+}
+
 export function parseLicenseEnforcement(raw: string | undefined): { mode: LicenseEnforcement; invalid: boolean } {
   const v = (raw ?? '').trim().toLowerCase();
   if (v === '') return { mode: 'enforce', invalid: false };

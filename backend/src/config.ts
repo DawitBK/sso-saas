@@ -13,7 +13,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import dotenv from "dotenv";
-import { parseLicenseEnforcement } from "./licenses/enforcement.js";
+import { parseLicenseEnforcement, parseLicenseRequired } from "./licenses/enforcement.js";
 
 // ---------------------------------------------------------------------------
 // ENV FILE LOADING CONTRACT — kept identical between SSO and DMS (each's own
@@ -336,6 +336,11 @@ export const IDP_CONFIG = {
    */
   licenseEnforcement: parseLicenseEnforcement(process.env.LICENSE_ENFORCEMENT).mode,
   licenseEnforcementInvalid: parseLicenseEnforcement(process.env.LICENSE_ENFORCEMENT).invalid,
+  /** Per-application entitlement (docs/operations/PLATFORM-LICENSING.md section 9): true in production unless the environment says otherwise. */
+  licenseRequired: parseLicenseRequired(process.env.LICENSE_REQUIRED, isProd).required,
+  licenseRequiredExplicit: parseLicenseRequired(process.env.LICENSE_REQUIRED, isProd).explicit,
+  /** Path to a dedicated licence-signing PEM private key kept OUTSIDE the repository. Unset: licences are signed with the OIDC key (development only). */
+  licenseSigningKeyFile: (process.env.LICENSE_SIGNING_KEY_FILE ?? "").trim(),
 
   /**
    * How many password checks (scrypt, ~128 MB and a fraction of a second each) may run at once, how many may wait, and how long one

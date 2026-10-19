@@ -5,6 +5,7 @@
 import { IDP_CONFIG } from '../config.js';
 import { logger } from '../logging/logger.js';
 import { computeLicenseState, type LicenseState } from './state.js';
+import { computeEntitlement, type DeploymentMode, type LicenseReason } from './entitlement.js';
 import { countSeatsUsed, findLicense, type LicenseRecord } from './repository.js';
 import type { LicenseSystem } from './catalog.js';
 
@@ -27,6 +28,11 @@ export interface LicenseStatus {
   version: number | null;
   /** SSO's own enforcement mode, so the console can say "warning only" when it is not blocking. */
   enforcement: 'enforce' | 'warn' | 'off';
+  /** Section 9: LICENSE_REQUIRED, whether the system is entitled to be used, why not, and the deployment shape it computed. */
+  required: boolean;
+  licensed: boolean;
+  reason: LicenseReason | null;
+  deployment: DeploymentMode;
 }
 
 /** The status of `record` at `nowMs`. `seatsUsed` is passed in (a database read the pure part must not do). */
@@ -35,6 +41,11 @@ export function buildStatus(system: LicenseSystem, record: LicenseRecord | null,
   // `off` switches the whole feature off: no state, no banner, nothing enforced.
   const computed = enforcement === 'off' ? computeLicenseState(null, nowMs) : computeLicenseState(record, nowMs);
   const live = enforcement === 'off' ? null : record;
+  // SSO is always the identity provider itself, so its deployment shape is 'sso'. `off` switches the whole feature off, entitlement included.
+  const entitlement =
+    enforcement === 'off'
+      ? { licensed: true, reason: null }
+      : computeEntitlement({ required: IDP_CONFIG.licenseRequired, state: computed.state, modes: live?.modes, deployment: 'sso' });
   return {
     system,
     state: computed.state,
@@ -52,6 +63,10 @@ export function buildStatus(system: LicenseSystem, record: LicenseRecord | null,
     fetchedAt: new Date(nowMs).toISOString(),
     version: live?.version ?? null,
     enforcement,
+    required: IDP_CONFIG.licenseRequired,
+    licensed: entitlement.licensed,
+    reason: entitlement.reason,
+    deployment: 'sso',
   };
 }
 

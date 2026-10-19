@@ -38,7 +38,8 @@ try {
 }
 
 const cwd = path.resolve(opts.cwd || process.cwd());
-const logsDir = path.join(cwd, 'logs');
+// --log-dir moves the lock, state and log files out of the working directory (a release folder must stay exactly as it was verified).
+const logsDir = opts.logDir ? path.resolve(opts.logDir) : path.join(cwd, 'logs');
 fs.mkdirSync(logsDir, { recursive: true });
 const lockPath = path.join(logsDir, `supervisor-${opts.name}.lock`);
 const statePath = path.join(logsDir, `supervisor-${opts.name}.json`);

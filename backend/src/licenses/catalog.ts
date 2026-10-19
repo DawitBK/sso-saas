@@ -15,6 +15,11 @@ export interface ModuleDef {
   description: string;
 }
 
+/** The deployment shapes a licence can authorise (section 9 of the contract). Absent or empty in a token means ['sso']. */
+export const LICENSE_MODES = ['sso', 'standalone'] as const;
+export type LicenseMode = (typeof LICENSE_MODES)[number];
+export const DEFAULT_LICENSE_MODES: LicenseMode[] = ['sso'];
+
 export const SYSTEM_LABELS: Record<LicenseSystem, string> = {
   sso: 'SSO (identity provider)',
   gms: 'GMS (guest management)',

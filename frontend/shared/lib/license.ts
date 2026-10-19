@@ -21,6 +21,11 @@ export interface LicenseStatus {
   fetchedAt: string | null;
   version: number | null;
   enforcement: 'enforce' | 'warn' | 'off';
+  /** Section 9 of the licensing contract: LICENSE_REQUIRED, entitled to be used, why not, and the deployment shape. */
+  required: boolean;
+  licensed: boolean;
+  reason: 'NO_LICENSE' | 'MODE_NOT_LICENSED' | null;
+  deployment: 'sso' | 'standalone';
 }
 
 export const STATE_LABEL: Record<LicenseState, string> = {

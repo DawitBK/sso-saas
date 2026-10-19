@@ -6,7 +6,7 @@
  * (`expiresAt`: a date, or null for "never"), so an omitted field can never silently make a licence perpetual.
  */
 import { DAY_MS } from './state.js';
-import { moduleKeys, type LicenseSystem } from './catalog.js';
+import { DEFAULT_LICENSE_MODES, LICENSE_MODES, moduleKeys, type LicenseSystem } from './catalog.js';
 import type { LicenseRecord } from './repository.js';
 
 export interface FieldProblem { field: string; message: string }
@@ -20,6 +20,7 @@ export interface LicenseFields {
   warnDays: number;
   maxUsers: number | null;
   modules: string[] | null;
+  modes: string[];
   notes: string;
 }
 
@@ -128,6 +129,17 @@ export function validateLicenseInput(system: LicenseSystem, raw: unknown, existi
   }
   if (system === 'sso') modules = null;
 
+  // modes: which deployment shapes this licence authorises. Never empty: a licence that authorises nothing is not a licence. SSO itself always runs as the identity provider.
+  let modes: string[] = existing?.modes ?? [...DEFAULT_LICENSE_MODES];
+  if (has(body, 'modes')) {
+    if (!Array.isArray(body.modes) || body.modes.length === 0 || body.modes.some((m) => typeof m !== 'string' || !(LICENSE_MODES as readonly string[]).includes(m))) {
+      problems.push({ field: 'modes', message: 'A non-empty list of "sso" and/or "standalone".' });
+    } else {
+      modes = LICENSE_MODES.filter((m) => (body.modes as string[]).includes(m));
+    }
+  }
+  if (system === 'sso') modes = [...DEFAULT_LICENSE_MODES];
+
   let notes = existing?.notes ?? '';
   if (has(body, 'notes')) {
     if (typeof body.notes !== 'string' || body.notes.length > 2000) problems.push({ field: 'notes', message: 'Text of at most 2000 characters.' });
@@ -135,7 +147,7 @@ export function validateLicenseInput(system: LicenseSystem, raw: unknown, existi
   }
 
   if (problems.length) return { ok: false, details: problems };
-  return { ok: true, value: { customer, expiresAt, graceDays, warnDays, maxUsers, modules, notes } };
+  return { ok: true, value: { customer, expiresAt, graceDays, warnDays, maxUsers, modules, modes, notes } };
 }
 
 export type ExtendInput = { days: number } | { expiresAt: string };

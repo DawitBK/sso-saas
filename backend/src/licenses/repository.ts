@@ -15,6 +15,8 @@ export interface LicenseRecord {
   warnDays: number;
   maxUsers: number | null;
   modules: string[] | null;
+  /** Deployment shapes this licence authorises: 'sso' and/or 'standalone'. */
+  modes: string[];
   notes: string;
   version: number;
   createdAt: string;
@@ -43,6 +45,7 @@ interface LicenseRow {
   warn_days: number;
   max_users: number | null;
   modules: string[] | null;
+  modes: string[];
   notes: string;
   version: number;
   created_at: Date;
@@ -52,7 +55,7 @@ interface LicenseRow {
 
 type Queryable = Pick<pg.Pool | pg.PoolClient, 'query'>;
 
-const COLUMNS = 'system, customer, expires_at, grace_days, warn_days, max_users, modules, notes, version, created_at, updated_at, updated_by';
+const COLUMNS = 'system, customer, expires_at, grace_days, warn_days, max_users, modules, modes, notes, version, created_at, updated_at, updated_by';
 
 function toRecord(r: LicenseRow): LicenseRecord {
   return {
@@ -63,6 +66,7 @@ function toRecord(r: LicenseRow): LicenseRecord {
     warnDays: r.warn_days,
     maxUsers: r.max_users,
     modules: r.modules,
+    modes: r.modes,
     notes: r.notes,
     version: r.version,
     createdAt: r.created_at.toISOString(),
@@ -95,6 +99,7 @@ export interface LicenseWrite {
   warnDays: number;
   maxUsers: number | null;
   modules: string[] | null;
+  modes: string[];
   notes: string;
   version: number;
   actor: string;
@@ -102,10 +107,10 @@ export interface LicenseWrite {
 
 export async function insertLicense(w: LicenseWrite, db: Queryable): Promise<LicenseRecord> {
   const { rows } = await db.query<LicenseRow>(
-    `INSERT INTO licenses (system, customer, expires_at, grace_days, warn_days, max_users, modules, notes, version, updated_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `INSERT INTO licenses (system, customer, expires_at, grace_days, warn_days, max_users, modules, modes, notes, version, updated_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
      RETURNING ${COLUMNS}`,
-    [w.system, w.customer, w.expiresAt, w.graceDays, w.warnDays, w.maxUsers, w.modules, w.notes, w.version, w.actor],
+    [w.system, w.customer, w.expiresAt, w.graceDays, w.warnDays, w.maxUsers, w.modules, w.modes, w.notes, w.version, w.actor],
   );
   return toRecord(rows[0]);
 }
@@ -113,11 +118,11 @@ export async function insertLicense(w: LicenseWrite, db: Queryable): Promise<Lic
 export async function updateLicense(w: LicenseWrite, db: Queryable): Promise<LicenseRecord> {
   const { rows } = await db.query<LicenseRow>(
     `UPDATE licenses
-        SET customer = $2, expires_at = $3, grace_days = $4, warn_days = $5, max_users = $6, modules = $7, notes = $8,
-            version = $9, updated_at = NOW(), updated_by = $10
+        SET customer = $2, expires_at = $3, grace_days = $4, warn_days = $5, max_users = $6, modules = $7, modes = $8, notes = $9,
+            version = $10, updated_at = NOW(), updated_by = $11
       WHERE system = $1
       RETURNING ${COLUMNS}`,
-    [w.system, w.customer, w.expiresAt, w.graceDays, w.warnDays, w.maxUsers, w.modules, w.notes, w.version, w.actor],
+    [w.system, w.customer, w.expiresAt, w.graceDays, w.warnDays, w.maxUsers, w.modules, w.modes, w.notes, w.version, w.actor],
   );
   return toRecord(rows[0]);
 }

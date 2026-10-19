@@ -10,12 +10,16 @@ import http from 'node:http';
 import express from 'express';
 import { LICENSE_EXPIRED_MESSAGE, READ_ONLY_ALLOWLIST, isAllowlisted, licenseReadOnlyGuard, type GuardDeps } from '../src/licenses/guard.js';
 
-const deps: GuardDeps & { state: { expired: boolean; mode: 'enforce' | 'warn' | 'off'; throws: boolean } } = {
-  state: { expired: true, mode: 'enforce', throws: false },
+const deps: GuardDeps & { state: { expired: boolean; unlicensed: boolean; mode: 'enforce' | 'warn' | 'off'; throws: boolean } } = {
+  state: { expired: true, unlicensed: false, mode: 'enforce', throws: false },
   mode() { return this.state.mode; },
   async expired() {
     if (this.state.throws) throw new Error('database down');
     return this.state.expired;
+  },
+  async unlicensed() {
+    if (this.state.throws) throw new Error('database down');
+    return this.state.unlicensed;
   },
 };
 
@@ -24,14 +28,14 @@ let base = '';
 
 beforeAll(async () => {
   const app = express();
-  app.use(licenseReadOnlyGuard({ mode: () => deps.mode(), expired: () => deps.expired() }));
+  app.use(licenseReadOnlyGuard({ mode: () => deps.mode(), expired: () => deps.expired(), unlicensed: () => deps.unlicensed() }));
   app.use((_req, res) => res.json({ reached: true }));
   server = http.createServer(app);
   await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
 afterAll(async () => { await new Promise<void>((r) => server.close(() => r())); });
-beforeEach(() => { deps.state.expired = true; deps.state.mode = 'enforce'; deps.state.throws = false; });
+beforeEach(() => { deps.state.expired = true; deps.state.unlicensed = false; deps.state.mode = 'enforce'; deps.state.throws = false; });
 
 async function send(method: string, path: string) {
   const res = await fetch(`${base}${path}`, { method, headers: { 'content-type': 'application/json' }, body: ['GET', 'HEAD'].includes(method) ? undefined : '{}' });
@@ -150,5 +154,51 @@ describe('isAllowlisted', () => {
     expect(isAllowlisted('/api/v1/admin/licensesx')).toBe(false);
     expect(isAllowlisted('/api/v1/admin/users')).toBe(false);
     expect(isAllowlisted('/')).toBe(false);
+  });
+});
+
+describe('LICENSE_REQUIRED and no licence for SSO (section 9)', () => {
+  beforeEach(() => { deps.state.expired = false; deps.state.unlicensed = true; });
+
+  it.each([
+    ['GET', '/api/v1/admin/users'],
+    ['POST', '/api/v1/admin/users'],
+    ['GET', '/api/v1/admin/settings'],
+  ])('%s %s answers 403 LICENSE_REQUIRED', async (method, path) => {
+    const r = await send(method, path);
+    expect(r.status).toBe(403);
+    expect(r.json.error.code).toBe('LICENSE_REQUIRED');
+    expect(r.json.error.message).toBe('This system is not licensed. Contact your administrator.');
+  });
+
+  it.each(READ_ONLY_ALLOWLIST.map((p) => ['POST', p]))('the allowlist still works: %s %s', async (method, path) => {
+    // /authorize is checked separately below (only the portal client may use it while unlicensed)
+    if (path === '/authorize') return;
+    const r = await send(method, path);
+    expect(r.status).toBe(200);
+  });
+
+  it('sign-in for the portal client keeps working, for any other relying party it is refused', async () => {
+    expect((await send('GET', '/authorize?client_id=portal')).status).toBe(200);
+    const other = await send('GET', '/authorize?client_id=edams');
+    expect(other.status).toBe(403);
+    expect(other.json.error.code).toBe('LICENSE_REQUIRED');
+  });
+
+  it('warn only logs; off does nothing', async () => {
+    deps.state.mode = 'warn';
+    expect((await send('GET', '/api/v1/admin/users')).status).toBe(200);
+    deps.state.mode = 'off';
+    expect((await send('GET', '/api/v1/admin/users')).status).toBe(200);
+  });
+
+  it('a failure reading the licence lets the request through (fail open, nothing deleted)', async () => {
+    deps.state.throws = true;
+    expect((await send('GET', '/api/v1/admin/users')).status).toBe(200);
+  });
+
+  it('licensed again: everything is served', async () => {
+    deps.state.unlicensed = false;
+    expect((await send('GET', '/api/v1/admin/users')).status).toBe(200);
   });
 });

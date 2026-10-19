@@ -19,6 +19,8 @@ interface LicenseRecord {
   warnDays: number;
   maxUsers: number | null;
   modules: string[] | null;
+  /** Deployment shapes the licence authorises: 'sso' and/or 'standalone'. */
+  modes: string[];
   notes: string;
   version: number;
   updatedAt: string;
@@ -64,6 +66,8 @@ interface Draft {
   maxUsers: string;
   allModules: boolean;
   modules: string[];
+  /** May this system also run standalone, without SSO? (every licence authorises running behind SSO) */
+  standalone: boolean;
   notes: string;
 }
 
@@ -83,6 +87,7 @@ function initialDraft(entry: SystemEntry): Draft {
     maxUsers: l?.maxUsers != null ? String(l.maxUsers) : '',
     allModules: l ? l.modules === null : true,
     modules: l?.modules ?? [],
+    standalone: l?.modes?.includes('standalone') ?? false,
     notes: l?.notes ?? '',
   };
 }
@@ -117,6 +122,7 @@ function payloadOf(entry: SystemEntry, d: Draft): Record<string, unknown> {
     const changed = d.allModules !== init.allModules || (!d.allModules && [...d.modules].sort().join() !== [...init.modules].sort().join());
     put('modules', d.allModules ? null : d.modules, changed);
   }
+  if (entry.system !== 'sso') put('modes', d.standalone ? ['sso', 'standalone'] : ['sso'], d.standalone !== init.standalone);
   put('notes', d.notes, d.notes !== init.notes);
   return out;
 }
@@ -237,6 +243,14 @@ function LicenseCard({ entry, enforcement, getCsrf, onChanged }: {
       ) : null}
 
       <div className="license-form">
+        {entry.system !== 'sso' ? (
+          <label className="ui-switch license-wide">
+            <input type="checkbox" checked={draft.standalone} disabled={busy} onChange={(e) => set('standalone', e.target.checked)} />
+            <span className="track" aria-hidden="true" />
+            <span>May also run standalone (without SSO). Off: this licence is valid only while the system runs behind SSO.</span>
+          </label>
+        ) : null}
+
         <div className="ui-field license-wide">
           <label className="sub" htmlFor={`${idp}-customer`}>Customer</label>
           <input id={`${idp}-customer`} className="ui-input" value={draft.customer} maxLength={200} disabled={busy} aria-invalid={shown('customer') ? true : undefined} onChange={(e) => set('customer', e.target.value)} />

@@ -305,7 +305,7 @@ describe('a newly created user must choose a password at first sign-in', () => {
   });
 });
 
-describe('making the new person an IdP administrator at creation is the platform administrator's call alone', () => {
+describe('making the new person an IdP administrator at creation is for the platform administrator alone', () => {
   const body = (n: string, extra: Record<string, unknown> = {}) => ({ email: email(n), given_name: 'New', family_name: 'Admin', password: 'Temporary#12345', ...extra });
   const isMember = async (n: string) => (await pool.query(
     'SELECT 1 FROM idp_user_groups g JOIN idp_users u ON u.id = g.user_id WHERE u.email = $1 AND g.group_dn = $2',

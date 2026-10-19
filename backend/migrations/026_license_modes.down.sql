@@ -1,0 +1,1 @@
+ALTER TABLE licenses DROP COLUMN IF EXISTS modes;

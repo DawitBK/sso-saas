@@ -23,6 +23,16 @@ export function LicenseBanner({ isPlatformAdmin }: { isPlatformAdmin: boolean })
 
   const manage = <Link href="/admin/licenses" className="admin-link">Licences →</Link>;
 
+  if (data.required && !data.licensed) {
+    return (
+      <div className="health-banner not_ready license-banner" role="alert">
+        <strong>This system is not licensed.</strong>
+        <span>Contact your administrator. Signing in and this licence page keep working.</span>
+        {manage}
+      </div>
+    );
+  }
+
   if (data.state === 'expiring') {
     const days = data.daysRemaining ?? 0;
     return (

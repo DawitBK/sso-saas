@@ -43,9 +43,9 @@ function expandTemplate(template, env) {
 }
 
 const USAGE =
-  'Usage: node supervise.cjs --name <name> [--cwd <dir>] [--env-file <file>] [--env KEY=VALUE]... ' +
+  'Usage: node supervise.cjs --name <name> [--cwd <dir>] [--log-dir <dir>] [--env-file <file>] [--env KEY=VALUE]... ' +
   '[--health <url with {PORT}>] [--health-interval <s>] [--health-failures <n>] [--grace <s>] -- <command> [args...]\n' +
-  '       node supervise.cjs --stop <name> [--cwd <dir>]';
+  '       node supervise.cjs --stop <name> [--cwd <dir>] [--log-dir <dir>]';
 
 function parseArgs(argv) {
   const opts = { env: {}, healthIntervalSec: 15, healthFailures: 4, graceSec: 60 };
@@ -61,6 +61,7 @@ function parseArgs(argv) {
     if (a === '--name') opts.name = need();
     else if (a === '--stop') { opts.stop = true; opts.name = need(); }
     else if (a === '--cwd') opts.cwd = need();
+    else if (a === '--log-dir') opts.logDir = need();
     else if (a === '--env-file') opts.envFile = need();
     else if (a === '--env') {
       const kv = need();

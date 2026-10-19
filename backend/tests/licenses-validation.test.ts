@@ -4,7 +4,7 @@ import { extendedExpiry, parseExpiry, validateExtendInput, validateLicenseInput 
 import type { LicenseRecord } from '../src/licenses/repository.js';
 
 const existing = (over: Partial<LicenseRecord> = {}): LicenseRecord => ({
-  system: 'gms', customer: 'Example Corp', expiresAt: '2027-01-01T00:00:00.000Z', graceDays: 14, warnDays: 30, maxUsers: 50, modules: ['visits'],
+  system: 'gms', customer: 'Example Corp', expiresAt: '2027-01-01T00:00:00.000Z', graceDays: 14, warnDays: 30, maxUsers: 50, modules: ['visits'], modes: ['sso'],
   notes: '', version: 3, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z', updatedBy: 'platform', ...over,
 });
 
@@ -38,7 +38,7 @@ describe('validateLicenseInput on a new licence', () => {
   });
   it('null expiry means "never" and applies the defaults (grace 14, warn 30, no limit, all modules)', () => {
     const r = validateLicenseInput('gms', { customer: ' Example Corp ', expiresAt: null }, null);
-    expect(r).toEqual({ ok: true, value: { customer: 'Example Corp', expiresAt: null, graceDays: 14, warnDays: 30, maxUsers: null, modules: null, notes: '' } });
+    expect(r).toEqual({ ok: true, value: { customer: 'Example Corp', expiresAt: null, graceDays: 14, warnDays: 30, maxUsers: null, modules: null, modes: ['sso'], notes: '' } });
   });
   it('grace and warn accept 0 and 365, refuse -1, 366, fractions and strings', () => {
     expect(validateLicenseInput('gms', { customer: 'x', expiresAt: null, graceDays: 0, warnDays: 365 }, null).ok).toBe(true);
@@ -83,7 +83,7 @@ describe('validateLicenseInput on a new licence', () => {
 describe('validateLicenseInput on an existing licence', () => {
   it('a field left out keeps its stored value', () => {
     const r = validateLicenseInput('gms', { maxUsers: 80 }, existing());
-    expect(r).toEqual({ ok: true, value: { customer: 'Example Corp', expiresAt: '2027-01-01T00:00:00.000Z', graceDays: 14, warnDays: 30, maxUsers: 80, modules: ['visits'], notes: '' } });
+    expect(r).toEqual({ ok: true, value: { customer: 'Example Corp', expiresAt: '2027-01-01T00:00:00.000Z', graceDays: 14, warnDays: 30, maxUsers: 80, modules: ['visits'], modes: ['sso'], notes: '' } });
   });
   it('an explicit null clears a limit, the expiry (perpetual) and the module list (all)', () => {
     const r = validateLicenseInput('gms', { maxUsers: null, expiresAt: null, modules: null }, existing());
@@ -111,5 +111,31 @@ describe('validateExtendInput / extendedExpiry', () => {
     expect(extendedExpiry('2026-07-01T00:00:00.000Z', 30, now)).toBe(new Date(Date.UTC(2026, 6, 1) + 30 * DAY_MS).toISOString());
     // lapsed: from today
     expect(extendedExpiry('2026-01-01T00:00:00.000Z', 30, now)).toBe(new Date(now + 30 * DAY_MS).toISOString());
+  });
+});
+
+describe('modes (the deployment shapes a licence authorises, section 9)', () => {
+  const ok = (body: Record<string, unknown>, existing = null) => validateLicenseInput('gms', { customer: 'x', expiresAt: null, ...body }, existing);
+  it('defaults to behind-SSO only', () => {
+    const r = ok({});
+    expect(r.ok && r.value.modes).toEqual(['sso']);
+  });
+  it('accepts standalone, alone or together, in catalogue order and without duplicates', () => {
+    const a = ok({ modes: ['standalone'] });
+    expect(a.ok && a.value.modes).toEqual(['standalone']);
+    const b = ok({ modes: ['standalone', 'sso', 'sso'] });
+    expect(b.ok && b.value.modes).toEqual(['sso', 'standalone']);
+  });
+  it('refuses an empty list, an unknown shape and a non-list', () => {
+    for (const bad of [[], ['cloud'], 'sso', null, [1]]) expect(fieldsOf(ok({ modes: bad }))).toEqual(['modes']);
+  });
+  it('a save that leaves modes out keeps the stored ones', () => {
+    const existing = { customer: 'x', expiresAt: null, graceDays: 14, warnDays: 30, maxUsers: null, modules: null, modes: ['sso', 'standalone'], notes: '', system: 'gms', version: 3, createdAt: '', updatedAt: '', updatedBy: '' } as never;
+    const r = validateLicenseInput('gms', { notes: 'renewed' }, existing);
+    expect(r.ok && r.value.modes).toEqual(['sso', 'standalone']);
+  });
+  it('SSO itself always runs as the identity provider', () => {
+    const r = validateLicenseInput('sso', { customer: 'x', expiresAt: null, modes: ['standalone'] }, null);
+    expect(r.ok && r.value.modes).toEqual(['sso']);
   });
 });

@@ -106,7 +106,7 @@ export async function extendLicense(req: Request, actor: Actor, system: LicenseS
     if (!range.ok) throw new LicenseError(400, 'ERR-VALIDATION-FAILED', range.message, [{ field: 'expiresAt', message: range.message }]);
     const version = await nextVersion(system, existing, client);
     const updated = await updateLicense(
-      { system, customer: existing.customer, expiresAt, graceDays: existing.graceDays, warnDays: existing.warnDays, maxUsers: existing.maxUsers, modules: existing.modules, notes: existing.notes, version, actor: actor.label },
+      { system, customer: existing.customer, expiresAt, graceDays: existing.graceDays, warnDays: existing.warnDays, maxUsers: existing.maxUsers, modules: existing.modules, modes: existing.modes, notes: existing.notes, version, actor: actor.label },
       client,
     );
     await record(req, actor, 'extend', system, existing, updated, version, client);
