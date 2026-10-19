@@ -21,7 +21,8 @@ interface DmsRoleDetailData {
   error: string | null;
   checked: string[];
   groups: PermissionGroup[];
-  tenant: string;
+  /** Null unless the viewer is the platform administrator. */
+  tenant: string | null;
   csrf: string;
 }
 
@@ -90,7 +91,7 @@ function DmsRoleDetailInner() {
         <div>
           <h1>{data.roleName || data.roleId}</h1>
           <p>
-            Default permissions for this role — tenant <code className="admin-code">{data.tenant}</code>.
+            Default permissions for this role{data.tenant && <> — tenant <code className="admin-code">{data.tenant}</code></>}.
           </p>
         </div>
       </div>

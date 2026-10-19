@@ -376,12 +376,13 @@ export const openApiSpec = {
       get: {
         summary: "SSO's own licence status",
         description:
-          'Needs a signed-in portal session. Also served at /license/status. Returns the state (unconfigured, active, expiring, grace, expired), the dates, ' +
+          'Needs a signed-in portal session of the platform administrator. Also served at /license/status. Returns the state (unconfigured, active, expiring, grace, expired), the dates, ' +
           'whether SSO is read-only because of it, and the seat and module terms.',
         tags: ['Licensing'],
         responses: {
           '200': { description: 'Licence status' },
           '401': { description: 'Not signed in' },
+          '403': { description: 'Not the platform administrator' },
         },
       },
     },

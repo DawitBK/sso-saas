@@ -67,7 +67,22 @@ function secured(request: NextRequest): NextResponse {
   return response;
 }
 
+/**
+ * Pages the SSO BACKEND renders itself (oidc-provider's end-session page). Where Apache routes straight to the backend they never reach this
+ * process; where everything goes through this frontend (the hosted SaaS edition behind Vercel) this process would replace the backend's
+ * Content-Security-Policy with its own, whose nonce the backend's inline script does not carry: the browser blocked the script and sign-out
+ * ended on a blank page. These paths keep the backend's own headers.
+ */
+const BACKEND_RENDERED_PREFIXES = ['/session/'];
+
+function isBackendRendered(pathname: string): boolean {
+  const bare = BASE_PATH && pathname.startsWith(BASE_PATH) ? pathname.slice(BASE_PATH.length) || '/' : pathname;
+  return BACKEND_RENDERED_PREFIXES.some((p) => bare.startsWith(p));
+}
+
 export function proxy(request: NextRequest) {
+  if (isBackendRendered(request.nextUrl.pathname)) return NextResponse.next();
+
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     return secured(request);
   }

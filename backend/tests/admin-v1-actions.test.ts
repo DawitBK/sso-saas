@@ -24,6 +24,12 @@ jest.mock('../src/admin/requireAdmin.js', () => {
   };
   return { requireAdminJson: gate, getPortalSessionFromRequest: jest.fn() };
 });
+const platform = { admin: false };
+jest.mock('../src/auth/platform-admin.js', () => ({
+  ...jest.requireActual('../src/auth/platform-admin.js'),
+  isPlatformAdminSession: async () => platform.admin,
+  isPlatformAdminEmail: async () => platform.admin,
+}));
 jest.mock('../src/auth/revoke.js', () => ({
   ...jest.requireActual('../src/auth/revoke.js'),
   revokeAllSessions: (...a: unknown[]) => mockRevoke(...a),
@@ -66,6 +72,7 @@ import express from 'express';
 import { pool } from '../src/db/pool.js';
 import { adminApiRouter, ADMIN_API_CSRF_COOKIE } from '../src/api/v1/admin.router.js';
 import { replaceGroupEntitlements, replaceGroupGmsRole } from '../src/admin/access.js';
+import { IDP_CONFIG } from '../src/config.js';
 
 const TAG = 'jest-v1-actions';
 const email = (n: string) => `${TAG}-${n}@example.invalid`;
@@ -123,6 +130,7 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
+  platform.admin = false;
   mockRevoke.mockReset();
   mockRevoke.mockResolvedValue({ oidcArtifacts: 1, portalSessions: 0, gatewaySessions: 0, pendingLogins: 0, gmsSessions: 0, dmsNotified: true });
 });
@@ -294,6 +302,45 @@ describe('a newly created user must choose a password at first sign-in', () => {
     expect(r.status).toBe(200);
     const { rows } = await pool.query('SELECT must_change_password, source FROM idp_users WHERE email = $1', [email('created')]);
     expect(rows[0]).toEqual({ must_change_password: true, source: 'local' });
+  });
+});
+
+describe('making the new person an IdP administrator at creation is the platform administrator's call alone', () => {
+  const body = (n: string, extra: Record<string, unknown> = {}) => ({ email: email(n), given_name: 'New', family_name: 'Admin', password: 'Temporary#12345', ...extra });
+  const isMember = async (n: string) => (await pool.query(
+    'SELECT 1 FROM idp_user_groups g JOIN idp_users u ON u.id = g.user_id WHERE u.email = $1 AND g.group_dn = $2',
+    [email(n), IDP_CONFIG.adminGroup],
+  )).rowCount;
+
+  it('the form is told whether it may offer the option', async () => {
+    expect((await call('GET', '/role-catalog')).json.data.canGrantIdpAdmin).toBe(false);
+    platform.admin = true;
+    expect((await call('GET', '/role-catalog')).json.data.canGrantIdpAdmin).toBe(true);
+  });
+
+  it('an IdP administrator who asks for it is refused and nothing is created', async () => {
+    const r = await call('POST', '/users', body('pa-refused', { is_admin: true }));
+    expect(r.status).toBe(403);
+    expect(r.json.error.code).toBe('ERR-PLATFORM-ADMIN-ONLY');
+    expect((await pool.query('SELECT 1 FROM idp_users WHERE email = $1', [email('pa-refused')])).rowCount).toBe(0);
+  });
+
+  it('without the option, a non-platform administrator creates an ordinary user', async () => {
+    expect((await call('POST', '/users', body('pa-plain'))).status).toBe(200);
+    expect(await isMember('pa-plain')).toBe(0);
+  });
+
+  it('the platform administrator creates an IdP administrator in one step, and it is audited', async () => {
+    platform.admin = true;
+    const r = await call('POST', '/users', body('pa-granted', { is_admin: true }));
+    expect(r.status).toBe(200);
+    expect(await isMember('pa-granted')).toBe(1);
+  });
+
+  it('the platform administrator who does not tick it creates an ordinary user', async () => {
+    platform.admin = true;
+    expect((await call('POST', '/users', body('pa-unticked', { is_admin: false }))).status).toBe(200);
+    expect(await isMember('pa-unticked')).toBe(0);
   });
 });
 

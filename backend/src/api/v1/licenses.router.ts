@@ -3,7 +3,7 @@
  *
  *   GET    /api/v1/licenses/public/:system      UNAUTHENTICATED, rate-limited: 200 { token } (also { data: { token } }), or 404 when that system has no licence.
  *                                               The token is a signed JWS that holds no secret; GMS and DMS poll it (see licenses/token.ts).
- *   GET    /api/v1/licenses/status              SSO's own status (contract section 5 shape), any signed-in person. Also served at /api/v1/license/status.
+ *   GET    /api/v1/licenses/status              SSO's own status (contract section 5 shape), the platform administrator only. Also served at /api/v1/license/status.
  *   GET    /api/v1/admin/licenses               every system's licence, state, the module catalogue and the last changes     (platform administrator)
  *   PUT    /api/v1/admin/licenses/:system       create or update ({ customer, expiresAt|null, graceDays, warnDays, maxUsers|null, modules|null, notes, csrf })
  *   POST   /api/v1/admin/licenses/:system/extend  { days } or { expiresAt }, plus csrf
@@ -69,6 +69,11 @@ export function licensesPublicRouter(): Router {
       const session = await getPortalSessionFromRequest(req);
       if (!session) {
         sendError(res, 401, 'ERR-NOT-AUTHENTICATED', 'Authentication required');
+        return;
+      }
+      // SSO's own licence is the platform administrator's to see (owner decision 2026-10-19): an IdP administrator gets no licence information.
+      if (!(await isPlatformAdminSession(session))) {
+        sendError(res, 403, 'ERR-PLATFORM-ADMIN-ONLY', 'Licences are visible to the platform administrator only.');
         return;
       }
       res.set('cache-control', 'no-store');

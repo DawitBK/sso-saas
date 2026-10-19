@@ -9,6 +9,8 @@ import { PageSkeleton } from '@shared/ui/States';
 
 interface RoleCatalog {
   dmsRoles: string[];
+  /** Whether this administrator may make the new person an IdP administrator (the platform administrator only). */
+  canGrantIdpAdmin?: boolean;
   gmsRoles: string[];
   gmsOfficeScopedRoles: string[];
   /** What the server enforces (and the table also checks); the inputs below stop at the same numbers instead of carrying their own. */
@@ -50,6 +52,7 @@ export default function NewUserPage() {
   );
   const [gmsRole, setGmsRole] = useState("");
   const [officeId, setOfficeId] = useState("");
+  const [isIdpAdmin, setIsIdpAdmin] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -104,6 +107,7 @@ export default function NewUserPage() {
           dms_department_ids: [...dmsDepartmentIds],
           gms_role: gmsRole,
           office_id: officeId || null,
+          is_admin: catalog?.canGrantIdpAdmin ? isIdpAdmin : false,
           csrf,
         }),
       });
@@ -293,7 +297,7 @@ export default function NewUserPage() {
               <label className="admin-label" style={{ margin: 0 }}>
                 DMS departments{" "}
                 <span style={{ textTransform: "none", fontWeight: 400 }}>
-                  (optional; tenant-scoped)
+                  (optional)
                 </span>
               </label>
               {departments.length > 0 && (
@@ -370,6 +374,39 @@ export default function NewUserPage() {
               DMS_INTERNAL_API_KEY is not configured — DMS access can&apos;t be
               set until it is.
             </p>
+          )}
+
+          {catalog.canGrantIdpAdmin && (
+            <div style={{ marginTop: "14px" }}>
+              <label className="admin-label" htmlFor="is_admin">
+                IdP administrator{" "}
+                <span style={{ textTransform: "none", fontWeight: 400 }}>
+                  (optional)
+                </span>
+              </label>
+              <label
+                style={{
+                  fontWeight: 400,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  margin: 0,
+                  padding: "6px 0",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  id="is_admin"
+                  checked={isIdpAdmin}
+                  onChange={(e) => setIsIdpAdmin(e.target.checked)}
+                />{" "}
+                Grant admin console access
+              </label>
+              <p className="admin-hint" style={{ margin: "0 0 8px" }}>
+                A limited administrator: users, groups, access, sessions, sign-ins and audit. They cannot see or change licences, tenants,
+                signing keys, sign-in clients or who else is an administrator, and the platform administrator is invisible to them.
+              </p>
+            </div>
           )}
 
           <label className="admin-label" htmlFor="gms_role">

@@ -559,6 +559,12 @@ export function adminApiRouter(): Router {
           return;
         }
         const officeId = parsedOffice;
+        // Who is an IdP administrator is the platform administrator's call alone. Checked before anything is created.
+        const grantsIdpAdmin = req.body.is_admin === true || req.body.is_admin === "on" || req.body.is_admin === "true";
+        if (grantsIdpAdmin && !(await isPlatformAdminSession(session))) {
+          sendError(res, 403, "ERR-PLATFORM-ADMIN-ONLY", "Only the platform administrator can make someone an IdP administrator.");
+          return;
+        }
         const dmsDepartmentIds: string[] = Array.from(
           new Set<string>(
             (Array.isArray(req.body.dms_department_ids)
@@ -655,11 +661,15 @@ export function adminApiRouter(): Router {
               rid(res),
             );
           }
+          if (grantsIdpAdmin) {
+            await addUserToGroup(userId, email, IDP_CONFIG.adminGroup, session.email, req);
+          }
           await writeAudit(req, session.email, "user.create", email, {
             userId,
             dmsRoles,
             gmsRole,
             officeId,
+            idpAdmin: grantsIdpAdmin,
           });
         } catch (err) {
           await rollbackFailedUserCreate(
@@ -1567,7 +1577,8 @@ export function adminApiRouter(): Router {
         sendOk(res, {
           roles,
           error,
-          tenant: IDP_CONFIG.dmsDefaultTenant,
+          // The tenant is the platform administrator's to see; an IdP administrator is shown the roles without it.
+          tenant: (await isPlatformAdminSession(session)) ? IDP_CONFIG.dmsDefaultTenant : null,
           adminEmail: session.email,
         });
       } catch (err) {
@@ -1617,7 +1628,7 @@ export function adminApiRouter(): Router {
           error,
           checked,
           groups: groupedPermissions(),
-          tenant: IDP_CONFIG.dmsDefaultTenant,
+          tenant: (await isPlatformAdminSession(session)) ? IDP_CONFIG.dmsDefaultTenant : null,
           adminEmail: session.email,
           csrf: issueAdminCsrf(res),
         });
@@ -1996,7 +2007,7 @@ export function adminApiRouter(): Router {
    */
   router.get(
     "/role-catalog",
-    async (_req: Request, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response, next: NextFunction) => {
       try {
         const [dmsRoles, gmsRoles, gmsOfficeScopedRoles] = await Promise.all([
           listDmsRoleNames(),
@@ -2009,6 +2020,8 @@ export function adminApiRouter(): Router {
           gmsRoles,
           gmsOfficeScopedRoles,
           dmsConnected: Boolean(IDP_CONFIG.dmsInternalApiKey),
+          // Whether the create-user form offers "IdP administrator" (the platform administrator's call alone).
+          canGrantIdpAdmin: await isPlatformAdminSession((req as any).adminSession as PortalSession),
           // What the create-user form's inputs stop at. The server enforces the same numbers (admin/user-input.ts and the
           // database CHECKs), so the form reads them here instead of carrying its own copy.
           limits: {

@@ -6,32 +6,22 @@ import { adminFetch } from '@shared/lib/adminApi';
 import { formatDate, plural, type LicenseStatus } from '@shared/lib/license';
 
 /**
- * SSO's own licence state, above every admin page (docs/operations/PLATFORM-LICENSING.md section 6): a banner for expiring, grace and expired,
- * and a quiet note for the platform administrator when no licence is configured at all. Nothing at all while the licence is active, and
+ * SSO's own licence state, above every admin page (docs/operations/PLATFORM-LICENSING.md section 6): a banner for expiring, grace and expired.
+ * Nothing at all while the licence is active or when none is configured (owner decision 2026-10-19), and
  * nothing when the status cannot be read (a licence screen must never become the reason the console looks broken).
  */
 export function LicenseBanner({ isPlatformAdmin }: { isPlatformAdmin: boolean }) {
   const { data } = useQuery({
     queryKey: ['license-status'],
     queryFn: () => adminFetch<LicenseStatus>('/api/v1/licenses/status'),
+    enabled: isPlatformAdmin,
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
     retry: false,
   });
-  if (!data) return null;
+  if (!isPlatformAdmin || !data) return null;
 
-  const manage = isPlatformAdmin ? (
-    <Link href="/admin/licenses" className="admin-link">Licences →</Link>
-  ) : null;
-
-  if (data.state === 'unconfigured') {
-    if (!isPlatformAdmin) return null;
-    return (
-      <div className="license-note" role="note">
-        No licence is configured, so nothing is enforced. <Link href="/admin/licenses" className="admin-link">Set up licences →</Link>
-      </div>
-    );
-  }
+  const manage = <Link href="/admin/licenses" className="admin-link">Licences →</Link>;
 
   if (data.state === 'expiring') {
     const days = data.daysRemaining ?? 0;

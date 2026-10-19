@@ -14,7 +14,8 @@ interface DmsRole {
 interface DmsRolesData {
   roles: DmsRole[];
   error: string | null;
-  tenant: string;
+  /** Null unless the viewer is the platform administrator. */
+  tenant: string | null;
 }
 
 export default function DmsRolesPage() {
@@ -41,7 +42,7 @@ export default function DmsRolesPage() {
         <div>
           <h1>DMS Roles</h1>
           <p>
-            What each role in the document system (DMS, tenant <code className="admin-code">{data.tenant}</code>) may do by default.
+            What each role in the document system (DMS{data.tenant && <>, tenant <code className="admin-code">{data.tenant}</code></>}) may do by default.
             A change here applies to everyone who holds the role and has no personal exception; exceptions are set on that person&apos;s own page.
           </p>
         </div>

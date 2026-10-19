@@ -629,5 +629,4 @@ select.ui-input { height: 36px; padding: 0 10px; }
 .license-history ol { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px; }
 .license-banner { flex-wrap: wrap; }
 .license-banner > span { flex: 1 1 260px; font-size: 13px; }
-.license-note { margin: 0 0 14px; padding: 8px 12px; border-radius: var(--radius-md); background: var(--surface-raised); color: var(--muted); font-size: 12.5px; }
 @media (max-width: 640px) { .license-form { grid-template-columns: 1fr; } .license-revoke { margin-left: 0; } }

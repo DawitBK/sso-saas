@@ -364,6 +364,15 @@ describe('GET /licenses/status and /license/status (SSO itself)', () => {
     expect((await call('GET', '/api/v1/licenses/status')).status).toBe(401);
   });
 
+  it('an IdP administrator who is not the platform administrator gets no licence information', async () => {
+    state.platform = false;
+    for (const p of ['/api/v1/licenses/status', '/api/v1/license/status']) {
+      const r = await call('GET', p);
+      expect(r.status).toBe(403);
+      expect(r.json.error.code).toBe('ERR-PLATFORM-ADMIN-ONLY');
+    }
+  });
+
   it('with no licence for SSO: unconfigured, nothing read-only', async () => {
     const r = await call('GET', '/api/v1/license/status');
     expect(r.status).toBe(200);
