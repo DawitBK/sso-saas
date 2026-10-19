@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { AdminSidebar } from '../../shared/components/AdminSidebar';
 import { apiPath } from '@shared/apiPath';
 import { useBranding } from '@shared/branding/BrandingProvider';
+import { LicenseBanner } from '../../shared/components/LicenseBanner';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [adminEmail, setAdminEmail] = useState('');
@@ -87,7 +88,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className={`admin-sidebar-mobile-wrap ${mobileNavOpen ? 'open' : ''}`} role="dialog" aria-modal="true">
           <AdminSidebar isPlatformAdmin={isPlatformAdmin} />
         </div>
-        <main className="admin-main">{children}</main>
+        <main className="admin-main">
+          <LicenseBanner isPlatformAdmin={isPlatformAdmin} />
+          {children}
+        </main>
       </div>
     </>
   );

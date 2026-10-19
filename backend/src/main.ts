@@ -60,6 +60,7 @@ import { viewModelMiddleware } from './http/view-model.js';
 import { cspMiddleware } from './http/csp.js';
 import { logger } from './logging/logger.js';
 import { resyncActiveAdSessions } from './auth/ad-resync.worker.js';
+import { licenseReadOnlyGuard } from './licenses/guard.js';
 
 /** Sweep tables with no other purge path: oidc-provider's own artifacts (full
  *  claims payloads incl. ad_groups), the sign-in event log, and expired
@@ -152,6 +153,12 @@ async function main(): Promise<void> {
   await loadSettings();
   startSettingsRefresh();
 
+  if (IDP_CONFIG.licenseEnforcementInvalid) {
+    logger.warn({ value: process.env.LICENSE_ENFORCEMENT }, '[idp:license] LICENSE_ENFORCEMENT is not enforce, warn or off; using the default (enforce)');
+  } else if (IDP_CONFIG.licenseEnforcement !== 'enforce') {
+    logger.warn({ mode: IDP_CONFIG.licenseEnforcement }, '[idp:license] LICENSE_ENFORCEMENT is not "enforce": SSO’s own licence will not make it read-only');
+  }
+
   const provider = await buildProvider();
   // Follow the signing-key table (another process rotating, or a retired key's overlap ending) without a restart.
   startSigningKeyRefresh(provider, await loadSigningJwks());
@@ -181,6 +188,9 @@ async function main(): Promise<void> {
 
   // Request counts and latency for the Prometheus endpoint (ops/httpStats.ts).
   app.use(httpStatsMiddleware);
+
+  // SSO's own licence: read-only once it has expired and its grace period is over (licenses/guard.ts; no licence row, no effect).
+  app.use(licenseReadOnlyGuard());
 
   // Canonical-host guard: deliberately NOT here.
   //

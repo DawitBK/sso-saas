@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { apiPath } from "@shared/apiPath";
+import { apiPath } from "@shared/apiPath";
 import { PageSkeleton } from '@shared/ui/States';
 
 interface RoleCatalog {

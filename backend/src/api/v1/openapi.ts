@@ -353,5 +353,37 @@ export const openApiSpec = {
         },
       },
     },
+    '/licenses/public/{system}': {
+      get: {
+        summary: 'Signed licence token for one system (GMS or DMS)',
+        description:
+          'Unauthenticated and rate-limited (60 a minute per address). Returns a compact JWS signed with the OIDC signing key (header typ "kcms-license+jwt", no exp claim) ' +
+          'carrying the licence terms for that system; GMS and DMS poll it and verify it against /jwks. 404 means no licence is configured for the system, which every ' +
+          'consumer treats as "nothing to enforce". See docs/operations/PLATFORM-LICENSING.md.',
+        tags: ['Licensing'],
+        parameters: [{ name: 'system', in: 'path', required: true, schema: { type: 'string', enum: ['sso', 'gms', 'dms'] } }],
+        responses: {
+          '200': {
+            description: 'The signed licence token',
+            content: { 'application/json': { schema: { type: 'object', properties: { token: { type: 'string' } } } } },
+          },
+          '404': { description: 'No licence configured for this system (or an unknown system)' },
+          '429': { description: 'Rate limit exceeded' },
+        },
+      },
+    },
+    '/licenses/status': {
+      get: {
+        summary: "SSO's own licence status",
+        description:
+          'Needs a signed-in portal session. Also served at /license/status. Returns the state (unconfigured, active, expiring, grace, expired), the dates, ' +
+          'whether SSO is read-only because of it, and the seat and module terms.',
+        tags: ['Licensing'],
+        responses: {
+          '200': { description: 'Licence status' },
+          '401': { description: 'Not signed in' },
+        },
+      },
+    },
   },
 };

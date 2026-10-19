@@ -15,6 +15,7 @@ import {
   ScrollText,
   SlidersHorizontal,
   HeartPulse,
+  BadgeCheck,
   ChevronRight,
   LogOut,
   type LucideIcon,
@@ -63,6 +64,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: '/admin/system', label: 'System health', icon: HeartPulse },
       { href: '/admin/settings', label: 'Settings', icon: SlidersHorizontal },
+      { href: '/admin/licenses', label: 'Licences', icon: BadgeCheck, platformAdminOnly: true },
     ],
   },
 ];

@@ -13,6 +13,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import dotenv from "dotenv";
+import { parseLicenseEnforcement } from "./licenses/enforcement.js";
 
 // ---------------------------------------------------------------------------
 // ENV FILE LOADING CONTRACT — kept identical between SSO and DMS (each's own
@@ -330,6 +331,13 @@ export const IDP_CONFIG = {
   trustProxyHops: envInt("TRUST_PROXY_HOPS", 1),
 
   /**
+   * Platform licensing (docs/operations/PLATFORM-LICENSING.md): `enforce` (default), `warn` (compute and report, never block) or `off`.
+   * With no licence row for SSO, none of this has any effect. `LICENSE_ENFORCEMENT=warn` is the emergency switch.
+   */
+  licenseEnforcement: parseLicenseEnforcement(process.env.LICENSE_ENFORCEMENT).mode,
+  licenseEnforcementInvalid: parseLicenseEnforcement(process.env.LICENSE_ENFORCEMENT).invalid,
+
+  /**
    * How many password checks (scrypt, ~128 MB and a fraction of a second each) may run at once, how many may wait, and how long one
    * may wait before it is turned away with "busy, try again". Without a bound, a flood of sign-in attempts from many addresses
    * queues unlimited scrypt jobs on libuv's small thread pool (shared with DNS lookups and file access), exhausting memory and
@@ -490,6 +498,8 @@ export const IDP_CONFIG = {
    */
   gateway: {
     port: envInt("GATEWAY_PORT", 4200),
+    /** Requests per minute per address through the gateway (every page, asset and API call to GMS passes it). */
+    rateLimitPerMinute: envInt("GATEWAY_RATE_LIMIT_PER_MINUTE", 6000),
     publicUrl: process.env.GATEWAY_URL ?? "http://gms.localtest.me:4200",
     gmsFrontendTarget:
       process.env.GMS_FRONTEND_TARGET ?? "http://localhost:7201",

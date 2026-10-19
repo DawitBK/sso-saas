@@ -608,3 +608,26 @@ select.ui-input { height: 36px; padding: 0 10px; }
 .sso-link-button:hover { filter: brightness(1.15); }
 .sso-link-button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 2px; }
 .sso-input-code:not([inputmode='numeric']) { letter-spacing: .12em; font-size: 16px; }
+
+/* Licences page and the banner above the admin pages */
+.license-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap: 18px; align-items: start; }
+.license-card { margin-bottom: 0; }
+.license-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.license-head h2 { margin: 0 0 3px; font-size: 16px; }
+.license-sub { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.license-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; margin-top: 14px; }
+.license-wide { grid-column: 1 / -1; }
+.license-modules { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px 14px 12px; margin: 0; min-width: 0; }
+.license-modules legend { padding: 0 6px; }
+.license-module-list { margin-top: 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px 16px; }
+.license-module-desc { display: block; color: var(--muted); font-size: 12px; font-weight: 400; }
+.license-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; }
+.license-extend { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.license-revoke { margin-left: auto; }
+.license-history { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 10px; font-size: 13px; }
+.license-history summary { cursor: pointer; font-weight: 600; }
+.license-history ol { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px; }
+.license-banner { flex-wrap: wrap; }
+.license-banner > span { flex: 1 1 260px; font-size: 13px; }
+.license-note { margin: 0 0 14px; padding: 8px 12px; border-radius: var(--radius-md); background: var(--surface-raised); color: var(--muted); font-size: 12.5px; }
+@media (max-width: 640px) { .license-form { grid-template-columns: 1fr; } .license-revoke { margin-left: 0; } }

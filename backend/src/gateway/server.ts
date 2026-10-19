@@ -96,7 +96,10 @@ export function startGateway(): http.Server {
   const ssoHandoffLimiter = createLimiter('sso-handoff', { windowMs: 60_000, limit: 20 });
   // Light defense-in-depth ceiling for the rest of the proxied surface —
   // generous enough not to interfere with normal SPA/API/websocket traffic.
-  const gatewayLimiter = createLimiter('gateway', { windowMs: 60_000, limit: 600 });
+  // It was 600 a minute, which one GMS page load in development (Next dev assets,
+  // hot reload, polling) exceeds: the visible result was a bare "Too many requests,
+  // please try again later." page. Now GATEWAY_RATE_LIMIT_PER_MINUTE, default 6000.
+  const gatewayLimiter = createLimiter('gateway', { windowMs: 60_000, limit: IDP_CONFIG.gateway.rateLimitPerMinute });
   app.use(gatewayLimiter);
 
   // One-time SSO handoff: seed the GMS SPA session on THIS origin, then continue.

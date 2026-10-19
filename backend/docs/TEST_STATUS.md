@@ -5,7 +5,7 @@
 | Metric | Result |
 |---|---|
 | Product | Example Corp Identity Provider |
-| Test suites | 34 passed / 34 total |
-| Tests | 290 passed / 290 total |
+| Test suites | 47 passed / 47 total |
+| Tests | 525 passed / 525 total |
 | Failed | 0 |
 | Status | PASS |

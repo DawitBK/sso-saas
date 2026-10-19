@@ -14,6 +14,7 @@ import { systemRouter } from './system.router.js';
 import { clientsRouter } from './clients.router.js';
 import { usersBulkRouter } from './users-bulk.router.js';
 import { activityRouter } from './activity.router.js';
+import { licensesAdminRouter, licensesPublicRouter } from './licenses.router.js';
 import { publicResetRequestRouter, resetRequestsAdminRouter } from './reset-requests.router.js';
 import { createLimiter } from '../../infrastructure/rateLimiter.js';
 
@@ -37,8 +38,15 @@ export function apiV1Router(provider: Provider): Router {
   // Unauthenticated, read-only: the branding the sign-in page needs before anyone is signed in
   router.use('/public', publicRouter());
 
+  // Platform licensing: the unauthenticated signed token GMS and DMS poll, and SSO's own status (/license/status is the contract's name for it)
+  router.use('/licenses', licensesPublicRouter());
+  router.use('/license', licensesPublicRouter());
+
   // A CSRF token for pages that mutate without a GET of their own that issues one
   router.use('/admin/csrf', csrfRouter());
+
+  // Licences (platform administrator only; ahead of the generic /admin routers)
+  router.use('/admin/licenses', licensesAdminRouter());
 
   // Platform settings (own router: its routes are not under the user/group/session families below)
   router.use('/admin/settings', settingsAdminRouter());

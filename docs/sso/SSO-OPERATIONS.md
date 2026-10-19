@@ -15,6 +15,9 @@ runbook.
 5. [Sessions and the audit chain](#5-sessions-and-the-audit-chain)
 6. [Backups](#6-backups)
 7. [Troubleshooting](#7-troubleshooting)
+13. [2026-10-11: supervision, health, settings, applications, recovery codes, notification retry](#13-2026-10-11-supervision-health-settings-applications-recovery-codes-notification-retry)
+14. [2026-10-11 (second pass): audit chain, metrics, password reset requests, more than one process](#14-2026-10-11-second-pass-audit-chain-metrics-password-reset-requests-more-than-one-process)
+15. [2026-10-19: platform licensing](#15-2026-10-19-platform-licensing)
 
 ---
 
@@ -320,3 +323,22 @@ one process reaches the others, and a retired key stops being published when its
 probes, the job counters and the audit-chain verdict (each process shows its own on the System page), and **rate limits unless `REDIS_URL` is set**: without Redis, N processes allow N times the
 limits. So a second process is safe behind a load balancer if both use the same database, the same `.env.production` secrets and `REDIS_URL`. The supported way to stay up is still one supervised
 process (a restart takes seconds); a second process is for when that stops being enough.
+
+## 15. 2026-10-19: platform licensing
+
+Contract: `/docs/operations/PLATFORM-LICENSING.md` (canonical; this section is the SSO half). One licence per system (`sso`, `gms`, `dms`), kept in SSO's `licenses` table (migration 025), managed by the
+**platform administrator only** at Admin > Licences (the same line as the signing keys: a console administrator sees the page explain that and nothing else). A system with **no licence row is not restricted at
+all**; migration 025 creates no rows, so deploying it changes nothing until someone saves a licence.
+
+- **States:** active, expiring (the last `warn_days` before expiry), grace (`grace_days` after it, full function), expired (read-only). Perpetual = "Never expires". Computed by `src/licenses/state.ts`, which GMS and DMS copy.
+- **Saving, extending, removing.** Save sets customer, expiry (a date means the end of that day, UTC), grace and warn days (0 to 365), seat limit, modules. **+30/+90/+365 days** counts from the later of the current expiry and now.
+  **Remove** deletes the row (the system returns to "no licence"); the history stays in `license_events` and in the audit chain (`license.create|update|extend|revoke`). Version numbers never go backwards, even across a remove.
+- **What GMS and DMS read:** `GET http://127.0.0.1:7300/api/v1/licenses/public/<gms|dms>` (mirror `:9300`): unauthenticated, 60 a minute per address, 404 when there is no licence. The answer is a signed token (RS256, the OIDC signing key,
+  `typ kcms-license+jwt`, no `exp`; the claims are the contract's section 4). Rotating the signing key does not disturb a consumer that already holds a token.
+- **SSO's own licence** is read from the database (cached 5 seconds, fails open) and shown by `GET /api/v1/licenses/status` (also `/api/v1/license/status`, any signed-in person) and the banner above every console page.
+  When it is **expired** and `LICENSE_ENFORCEMENT=enforce`, `src/licenses/guard.ts` answers every POST/PUT/PATCH/DELETE with `403 LICENSE_EXPIRED` except the sign-in surface (interaction, `/authorize`, `/token`, `/me`, `/session`,
+  `/device`, `/.well-known`, `/jwks`, the portal, the GMS bridge, `/api/v1/auth|portal|public`, health and metrics, the licence routes, `/api/v1/admin/csrf`, `/api/v1/internal` and `/internal`, and the signing-key actions
+  `/api/v1/admin/keys`). So an expired SSO still lets everyone sign in to everything, and the platform administrator can still extend the licence.
+- **Emergency switch:** `LICENSE_ENFORCEMENT=warn` in `.env.production` and restart SSO (`off` ignores licences entirely). `enforce` is the default. SSO logs a warning at boot when it is not `enforce`, or when the value is not one of the three words.
+- **Where an operator looks:** Admin > Licences; the Audit page (filter `license.`); `SELECT * FROM license_events ORDER BY id DESC`.
+- **Rolling back:** `migrations/025_licenses.down.sql` drops both tables (every system returns to "no licence"; the audit chain keeps its records).

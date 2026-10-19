@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import toast from 'react-hot-toast';
 import { Copy, KeyRound, Archive } from 'lucide-react';
-import { apiPath } from '@shared/apiPath';
+import { apiPath } from '@shared/apiPath';
 import { ErrorState, PageSkeleton } from '@shared/ui/States';
 import { useConfirm } from '@shared/ui/Confirm';
 

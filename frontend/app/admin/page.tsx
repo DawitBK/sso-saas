@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { apiPath } from '@shared/apiPath';
+import { apiPath } from '@shared/apiPath';
 import { ErrorState, PageSkeleton } from '@shared/ui/States';
 
 interface DashboardData {

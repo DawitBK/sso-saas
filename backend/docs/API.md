@@ -884,3 +884,20 @@ acknowledgement is pinned to the row as it is (a row altered again later is a ne
 Resetting the person's password (`POST /api/v1/admin/users/:id/reset-password`) closes their open request. That route and user creation now apply the platform
 password rules (`password.minLength`, common-password list) to the temporary password; they used to accept anything of 8 characters.
 `GET /api/v1/public/branding` carries `passwordResetRequests` (whether the sign-in page offers "Forgot your password?").
+
+## Added 2026-10-19: platform licensing
+
+Contract: `/docs/operations/PLATFORM-LICENSING.md`. All paths are under `/api/v1` (consumers on the server call the backend directly: dev/prod `http://127.0.0.1:7300`, mirror `http://127.0.0.1:9300`).
+
+| Method and path | Who | What |
+|---|---|---|
+| `GET /api/v1/licenses/public/:system` (`gms` or `dms`, also `sso`) | anyone (rate limited, 60 a minute per address) | `200 { token, data: { token }, meta }` where `token` is a compact JWS (RS256, the OIDC signing key, header `typ: "kcms-license+jwt"` and its `kid`; claims `iss, aud: "license:<system>", sys, ver, iat, customer, expiresAt, graceDays, warnDays, maxUsers, modules`; **no `exp`**). `404 ERR-LICENSE-NOT-FOUND` when that system has no licence (or the system is unknown). |
+| `GET /api/v1/licenses/status` (alias `/api/v1/license/status`) | any signed-in person | SSO's own status: `system, state, customer, expiresAt, graceEndsAt, daysRemaining, warnDays, graceDays, readOnly, maxUsers, seatsUsed, modules, source, fetchedAt, version, enforcement`. `401 ERR-NOT-AUTHENTICATED` without a session. |
+| `GET /api/v1/admin/licenses` | **platform administrator** | `{ systems: [{ system, label, modules (the catalogue), license, computed, events (last 20) }], enforcement, serverTime, csrf }`. |
+| `PUT /api/v1/admin/licenses/:system` | platform administrator, CSRF | Create or update: `{ customer, expiresAt (YYYY-MM-DD = end of that day UTC, an ISO date-time with a zone, or null = never), graceDays, warnDays, maxUsers (null = unlimited), modules (catalogue keys, or null = all), notes, csrf }`. A create must name `customer` and `expiresAt`; an update merges. `201` on create, `200` on update. |
+| `POST /api/v1/admin/licenses/:system/extend` | platform administrator, CSRF | `{ days }` (1 to 3650, counted from the later of the expiry and now) or `{ expiresAt }`. `409 ERR-LICENSE-PERPETUAL` for days on a perpetual licence. |
+| `DELETE /api/v1/admin/licenses/:system` | platform administrator, CSRF | Revoke: the system returns to "no licence". `404 ERR-LICENSE-NOT-FOUND` when there is none. |
+| `GET /api/v1/admin/licenses/:system/events?limit=` | platform administrator | The history of one system. |
+
+Errors: `403 ERR-PLATFORM-ADMIN-ONLY`, `403 ERR-INVALID-CSRF`, `400 ERR-VALIDATION-FAILED` (with `details: [{ field, message }]`), `404 ERR-LICENSE-SYSTEM-NOT-FOUND`.
+While SSO's own licence is expired (and `LICENSE_ENFORCEMENT=enforce`) every non-allowlisted POST/PUT/PATCH/DELETE answers `403 LICENSE_EXPIRED`: see `src/licenses/guard.ts` for the allowlist.

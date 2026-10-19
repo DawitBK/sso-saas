@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { apiPath } from '@shared/apiPath';
+import { apiPath } from '@shared/apiPath';
 import { ErrorState, PageSkeleton } from '@shared/ui/States';
 import { useConfirm } from '@shared/ui/Confirm';
 import { groupName } from '../groupName';
