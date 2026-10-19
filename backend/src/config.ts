@@ -214,6 +214,26 @@ export const DEV_DEFAULT_CLIENT_SECRETS = [
   "portal-dev-secret",
 ];
 
+function productClients(): Array<{
+  client_id: string;
+  client_secret: string;
+  scope: string;
+  redirect_uris: string[];
+  post_logout_redirect_uris: string[];
+  name: string;
+}> {
+  const raw = process.env.PRODUCT_CLIENTS_JSON;
+  if (!raw) return [];
+  const list = JSON.parse(raw) as Array<{
+    client_id: string;
+    client_secret: string;
+    redirect_uris: string[];
+    post_logout_redirect_uris: string[];
+    name: string;
+  }>;
+  return list.map((c) => ({ ...c, scope: "openid profile email" }));
+}
+
 export const IDP_CONFIG = {
   env: NODE_ENV,
   isProd,
@@ -531,6 +551,26 @@ export const IDP_CONFIG = {
         `${env("IDP_ISSUER", "http://localhost:7301").replace(/\/$/, "")}/portal`,
       ],
     },
+    // MOS (Manufacturing Operations Suite, on Odoo) signs in through this IdP. Registered ONLY when MOS_ENABLED=true, and
+    // then with no fallbacks: a secret or address that is missing is a startup error, so a production IdP can never boot
+    // with a seeded client that still holds a development secret or a localhost address (assertProdSafeDefaults).
+    // MOS is a standalone product: it has no portal tile and no app-access entry.
+    ...(process.env.MOS_ENABLED === "true"
+      ? [
+          {
+            client_id: "mos",
+            client_secret: env("MOS_CLIENT_SECRET"),
+            scope: "openid profile email",
+            redirect_uris: env("MOS_REDIRECT_URIS").split(","),
+            name: "MOS (Odoo)",
+            post_logout_redirect_uris: env("MOS_LOGOUT_URIS").split(","),
+          },
+        ]
+      : []),
+    // The product apps (Retail OS, JobPilot, Martronics, Library) sign in through this IdP too. PRODUCT_CLIENTS_JSON is a
+    // JSON list of {client_id, client_secret, redirect_uris, post_logout_redirect_uris, name}, written by the hosting
+    // tooling; absent means none. Same rule as MOS: every secret and address comes from the environment, none has a default.
+    ...productClients(),
   ],
 };
 

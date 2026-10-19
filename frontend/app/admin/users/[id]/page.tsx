@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { apiPath } from "@shared/apiPath";
+import { apiPath } from "@shared/apiPath";
 import { ErrorState, PageSkeleton } from '@shared/ui/States';
 import { useConfirm } from '@shared/ui/Confirm';
 import { formatDateTime, timeAgo } from '@shared/lib/format';
@@ -74,6 +74,11 @@ interface HistoryEntry {
 }
 interface UserDetailData {
   user: User;
+  /** The person's own (personal) group: the target of the App access control below. */
+  personalDn: string;
+  /** Apps this person is entitled to open from the portal, through their personal group. */
+  entitledApps: string[];
+  appCatalog: Array<{ rp: string; label: string }>;
   groups: string[];
   knownGroups: string[];
   isAdmin: boolean;
@@ -127,6 +132,8 @@ export default function UserDetailPage() {
   const [givenName, setGivenName] = useState("");
   const [familyName, setFamilyName] = useState("");
   const [saving, setSaving] = useState(false);
+  // null = "as saved on the server"; a Set while the administrator is editing the App access checkboxes.
+  const [appSel, setAppSel] = useState<Set<string> | null>(null);
 
   // See the matching note in admin/groups/detail: `load` must not raise the
   // loading flag synchronously, because it is called from an effect and
@@ -486,6 +493,56 @@ export default function UserDetailPage() {
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <h2 className="admin-section-title">App access</h2>
+      <div className="admin-card">
+        <p className="sub" style={{ margin: "0 0 4px" }}>
+          Which apps this person can see and open from the portal, on top of anything their groups give them. Saved on
+          their personal group, the same place the group page edits for a whole group.
+        </p>
+        {(() => {
+          const saved = new Set(data.entitledApps);
+          const current = appSel ?? saved;
+          const changed =
+            current.size !== saved.size || [...current].some((rp) => !saved.has(rp));
+          return (
+            <>
+              <div className="admin-checks" style={{ flexWrap: "wrap" }}>
+                {data.appCatalog.map((a) => (
+                  <label key={a.rp}>
+                    <input
+                      type="checkbox"
+                      checked={current.has(a.rp)}
+                      onChange={(e) => {
+                        const next = new Set(current);
+                        if (e.target.checked) next.add(a.rp);
+                        else next.delete(a.rp);
+                        setAppSel(next);
+                      }}
+                    />
+                    {a.label}
+                  </label>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="admin-btn"
+                disabled={saving || !changed}
+                onClick={async () => {
+                  const ok = await post(
+                    "/api/v1/admin/groups/entitlements",
+                    { dn: data.personalDn, rp: [...current] },
+                    "App access saved",
+                  );
+                  if (ok) setAppSel(null);
+                }}
+              >
+                {changed ? "Save app access" : "No changes to save"}
+              </button>
+            </>
+          );
+        })()}
       </div>
 
       <h2 className="admin-section-title">

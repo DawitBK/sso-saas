@@ -464,8 +464,17 @@ export function adminApiRouter(): Router {
           }
         }
 
+        // Portal access for this one person: the entitlements held by their personal group (the same table the group page edits).
+        const { rows: entitledRows } = await pool.query<{ relying_party: string }>(
+          "SELECT relying_party FROM idp_app_entitlements WHERE group_dn = $1 ORDER BY relying_party",
+          [personalDn],
+        );
+
         sendOk(res, {
           user,
+          personalDn,
+          entitledApps: entitledRows.map((r) => r.relying_party),
+          appCatalog: APPS,
           groups: groups
             .map((g) => g.group_dn)
             .filter((dn) => dn !== personalDn),

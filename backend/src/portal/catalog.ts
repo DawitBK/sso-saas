@@ -57,6 +57,13 @@ const ownUrl = (path: string): string => `${IDP_CONFIG.publicBasePath}${path}`;
  * A new system still ALSO needs its OIDC client in config.ts's `clientSeed`
  * (`rp` here is that client's id, or the bridge's name for GMS).
  */
+function productTiles(): Array<{ rp: string; label: string; name: string; enabled: () => boolean; url: () => string }> {
+  const raw = process.env.PRODUCT_APPS_JSON;
+  if (!raw) return [];
+  const list = JSON.parse(raw) as Array<{ rp: string; label: string; name: string; url: string }>;
+  return list.map((t) => ({ rp: t.rp, label: t.label, name: t.name, enabled: () => true, url: () => t.url }));
+}
+
 export const APP_REGISTRY: ReadonlyArray<{
   rp: string;
   /** Short name in the admin console's App access list. */
@@ -80,6 +87,21 @@ export const APP_REGISTRY: ReadonlyArray<{
     enabled: () => IDP_CONFIG.gms.enabled,
     url: () => ownUrl('/bridge/gms/start'),
   },
+  // MOS (on Odoo) is registered, like its OIDC client in config.ts, only when MOS_ENABLED=true. Its tile opens MOS's own
+  // sign-in start, which sends the person straight back through this IdP.
+  ...(process.env.MOS_ENABLED === 'true'
+    ? [
+        {
+          rp: 'mos',
+          label: 'MOS (Odoo)',
+          name: 'MOS — Manufacturing Operations',
+          enabled: () => Boolean(process.env.MOS_PORTAL_URL),
+          url: () => process.env.MOS_PORTAL_URL ?? '',
+        },
+      ]
+    : []),
+  // The product apps: PRODUCT_APPS_JSON is a JSON list of {rp, label, name, url} (written by the hosting tooling).
+  ...productTiles(),
 ];
 
 /** Full app catalog; filtered per-user by entitlement below. */
