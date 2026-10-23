@@ -386,5 +386,127 @@ export const openApiSpec = {
         },
       },
     },
+    '/owner/verification/status': {
+      get: {
+        summary: 'Owner verification status and the list of owner-only operations',
+        description:
+          'Owner-only; anyone else is answered 404. Returns whether verification is required and set up, whether the emailed code is available, how many recovery codes are left, the lockout state, ' +
+          'the owner-only operations with their plain-language warnings, and a CSRF token. Shows no secret.',
+        tags: ['Owner verification'],
+        responses: { '200': { description: 'Status' }, '404': { description: 'Not the owner' } },
+      },
+    },
+    '/owner/verification/start': {
+      post: {
+        summary: "Start the verification for one owner-only operation",
+        description: "Owner-only; anyone else is answered 404. Needs the CSRF token in the body. Returns a challengeId, the question prompts and the steps. Errors: OWNER_NOT_ENROLLED (403), OWNER_VERIFICATION_LOCKED (423).",
+        tags: ['Owner verification'],
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { operation: { type: 'string' }, target: { type: 'string' }, csrf: { type: 'string' } } } } } },
+        responses: {
+          '200': { description: 'Step accepted (data.steps shows progress)' },
+          '403': { description: 'OWNER_VERIFICATION_FAILED (wrong answer or code, with attemptsLeft), OWNER_NOT_ENROLLED, or ERR-INVALID-CSRF' },
+          '404': { description: 'Not the owner' },
+          '409': { description: 'OWNER_STEP_ORDER, OWNER_EMAIL_UNAVAILABLE, OWNER_RECOVERY_NOT_ALLOWED' },
+          '410': { description: 'OWNER_CHALLENGE_EXPIRED: start again' },
+          '423': { description: 'OWNER_VERIFICATION_LOCKED (retryAfterSeconds)' },
+        },
+      },
+    },
+    '/owner/verification/answer-questions': {
+      post: {
+        summary: "Step 1: the three security questions",
+        description: "Owner-only; anyone else is answered 404. Needs the CSRF token in the body. ",
+        tags: ['Owner verification'],
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { challengeId: { type: 'string' }, answers: { type: 'array', items: { type: 'string' } }, csrf: { type: 'string' } } } } } },
+        responses: {
+          '200': { description: 'Step accepted (data.steps shows progress)' },
+          '403': { description: 'OWNER_VERIFICATION_FAILED (wrong answer or code, with attemptsLeft), OWNER_NOT_ENROLLED, or ERR-INVALID-CSRF' },
+          '404': { description: 'Not the owner' },
+          '409': { description: 'OWNER_STEP_ORDER, OWNER_EMAIL_UNAVAILABLE, OWNER_RECOVERY_NOT_ALLOWED' },
+          '410': { description: 'OWNER_CHALLENGE_EXPIRED: start again' },
+          '423': { description: 'OWNER_VERIFICATION_LOCKED (retryAfterSeconds)' },
+        },
+      },
+    },
+    '/owner/verification/send-email-code': {
+      post: {
+        summary: "Step 2: email the one-time code to the owner mailbox",
+        description: "Owner-only; anyone else is answered 404. Needs the CSRF token in the body. OWNER_EMAIL_UNAVAILABLE (409) when SMTP is removed, changed or unreachable: an unused recovery code replaces the emailed code.",
+        tags: ['Owner verification'],
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { challengeId: { type: 'string' }, csrf: { type: 'string' } } } } } },
+        responses: {
+          '200': { description: 'Step accepted (data.steps shows progress)' },
+          '403': { description: 'OWNER_VERIFICATION_FAILED (wrong answer or code, with attemptsLeft), OWNER_NOT_ENROLLED, or ERR-INVALID-CSRF' },
+          '404': { description: 'Not the owner' },
+          '409': { description: 'OWNER_STEP_ORDER, OWNER_EMAIL_UNAVAILABLE, OWNER_RECOVERY_NOT_ALLOWED' },
+          '410': { description: 'OWNER_CHALLENGE_EXPIRED: start again' },
+          '423': { description: 'OWNER_VERIFICATION_LOCKED (retryAfterSeconds)' },
+        },
+      },
+    },
+    '/owner/verification/verify-email-code': {
+      post: {
+        summary: "Step 2: check the emailed code",
+        description: "Owner-only; anyone else is answered 404. Needs the CSRF token in the body. ",
+        tags: ['Owner verification'],
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { challengeId: { type: 'string' }, code: { type: 'string' }, csrf: { type: 'string' } } } } } },
+        responses: {
+          '200': { description: 'Step accepted (data.steps shows progress)' },
+          '403': { description: 'OWNER_VERIFICATION_FAILED (wrong answer or code, with attemptsLeft), OWNER_NOT_ENROLLED, or ERR-INVALID-CSRF' },
+          '404': { description: 'Not the owner' },
+          '409': { description: 'OWNER_STEP_ORDER, OWNER_EMAIL_UNAVAILABLE, OWNER_RECOVERY_NOT_ALLOWED' },
+          '410': { description: 'OWNER_CHALLENGE_EXPIRED: start again' },
+          '423': { description: 'OWNER_VERIFICATION_LOCKED (retryAfterSeconds)' },
+        },
+      },
+    },
+    '/owner/verification/verify-recovery-code': {
+      post: {
+        summary: "Step 2 (only while the emailed code is unavailable): an offline recovery code",
+        description: "Owner-only; anyone else is answered 404. Needs the CSRF token in the body. ",
+        tags: ['Owner verification'],
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { challengeId: { type: 'string' }, code: { type: 'string' }, csrf: { type: 'string' } } } } } },
+        responses: {
+          '200': { description: 'Step accepted (data.steps shows progress)' },
+          '403': { description: 'OWNER_VERIFICATION_FAILED (wrong answer or code, with attemptsLeft), OWNER_NOT_ENROLLED, or ERR-INVALID-CSRF' },
+          '404': { description: 'Not the owner' },
+          '409': { description: 'OWNER_STEP_ORDER, OWNER_EMAIL_UNAVAILABLE, OWNER_RECOVERY_NOT_ALLOWED' },
+          '410': { description: 'OWNER_CHALLENGE_EXPIRED: start again' },
+          '423': { description: 'OWNER_VERIFICATION_LOCKED (retryAfterSeconds)' },
+        },
+      },
+    },
+    '/owner/verification/verify-totp': {
+      post: {
+        summary: "Step 3: the authenticator app code",
+        description: "Owner-only; anyone else is answered 404. Needs the CSRF token in the body. ",
+        tags: ['Owner verification'],
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { challengeId: { type: 'string' }, code: { type: 'string' }, csrf: { type: 'string' } } } } } },
+        responses: {
+          '200': { description: 'Step accepted (data.steps shows progress)' },
+          '403': { description: 'OWNER_VERIFICATION_FAILED (wrong answer or code, with attemptsLeft), OWNER_NOT_ENROLLED, or ERR-INVALID-CSRF' },
+          '404': { description: 'Not the owner' },
+          '409': { description: 'OWNER_STEP_ORDER, OWNER_EMAIL_UNAVAILABLE, OWNER_RECOVERY_NOT_ALLOWED' },
+          '410': { description: 'OWNER_CHALLENGE_EXPIRED: start again' },
+          '423': { description: 'OWNER_VERIFICATION_LOCKED (retryAfterSeconds)' },
+        },
+      },
+    },
+    '/owner/verification/finish': {
+      post: {
+        summary: "Finish: receive the single-use authorisation ticket",
+        description: "Owner-only; anyone else is answered 404. Needs the CSRF token in the body. Returns { ticket, expiresAt, operation, audience }. Send the ticket in the header X-Owner-Authorisation on the one request it is for (valid about 5 minutes, once). A refused owner-only request answers 403 OWNER_AUTHORISATION_REQUIRED or OWNER_AUTHORISATION_INVALID.",
+        tags: ['Owner verification'],
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { challengeId: { type: 'string' }, csrf: { type: 'string' } } } } } },
+        responses: {
+          '200': { description: 'Step accepted (data.steps shows progress)' },
+          '403': { description: 'OWNER_VERIFICATION_FAILED (wrong answer or code, with attemptsLeft), OWNER_NOT_ENROLLED, or ERR-INVALID-CSRF' },
+          '404': { description: 'Not the owner' },
+          '409': { description: 'OWNER_STEP_ORDER, OWNER_EMAIL_UNAVAILABLE, OWNER_RECOVERY_NOT_ALLOWED' },
+          '410': { description: 'OWNER_CHALLENGE_EXPIRED: start again' },
+          '423': { description: 'OWNER_VERIFICATION_LOCKED (retryAfterSeconds)' },
+        },
+      },
+    },
   },
 };

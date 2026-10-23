@@ -67,7 +67,7 @@ function pidAlive(pid) {
 
 function killTree(pid) {
   if (process.platform === 'win32') {
-    spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore' });
+    spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
   } else {
     try { process.kill(pid, 'SIGTERM'); } catch { /* already gone */ }
     setTimeout(() => { try { process.kill(pid, 'SIGKILL'); } catch { /* already gone */ } }, 5000).unref();
@@ -142,7 +142,7 @@ function start() {
   childStartedAt = Date.now();
   healthFailures = 0;
   killedByWatchdog = false;
-  child = spawn(exe, args, { cwd, stdio: 'inherit', env: { ...process.env, ...opts.env } });
+  child = spawn(exe, args, { cwd, stdio: 'inherit', windowsHide: true, env: { ...process.env, ...opts.env } });
   state.childPid = child.pid ?? null;
   saveState();
   log(`started pid ${child.pid}: ${opts.cmd.join(' ')}`);

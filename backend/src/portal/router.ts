@@ -20,7 +20,7 @@ import { getPortalSession, putPortalSession, dropPortalSession, type PortalSessi
 import { catalog, adminTile, entitled } from './catalog.js';
 import { setWebSession, takeWebSession, getWebSession, dropWebSession } from '../db/web-sessions.js';
 import { revokeGmsSessionsByEmail } from '../bridge/gms.js';
-import { notifyDmsLogout } from '../auth/logout-notify.js';
+import { notifyAppLogouts, notifyDmsLogout } from '../auth/logout-notify.js';
 import { revokeAllSessions } from '../auth/revoke.js';
 import {
   checkMfaLockout, getTotpState, enableTotp, disableTotp, recordMfaAttempt,
@@ -571,7 +571,10 @@ export function portalRouter(): Router {
         await revokeAllSessions(accountId, email).catch(() => { /* logged out regardless */ });
       } else {
         if (email) revokeGmsSessionsByEmail(email).catch(() => { /* logged out regardless */ });
-        if (accountId) notifyDmsLogout(accountId).catch(() => { /* logged out regardless */ });
+        if (accountId) {
+          notifyDmsLogout(accountId).catch(() => { /* logged out regardless */ });
+          notifyAppLogouts(accountId).catch(() => { /* logged out regardless */ });
+        }
       }
 
       const params = new URLSearchParams({

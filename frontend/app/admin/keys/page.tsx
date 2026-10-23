@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import toast from 'react-hot-toast';
 import { Copy, KeyRound, Archive } from 'lucide-react';
 import { apiPath } from '@shared/apiPath';
+import { ownerFetch } from '@shared/owner/ownerClient';
 import { ErrorState, PageSkeleton } from '@shared/ui/States';
 import { useConfirm } from '@shared/ui/Confirm';
 
@@ -102,7 +103,7 @@ export default function KeysPage() {
     if (!data) return;
     setBusy(true);
     try {
-      const res = await fetch(apiPath(path), {
+      const res = await ownerFetch(path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ csrf: data.csrf }),

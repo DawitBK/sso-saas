@@ -43,7 +43,7 @@ import { runAuditChainCheck } from './ops/auditChain.js';
 import { purgeResetRequests } from './auth/reset-requests.js';
 import { lastStopErrorHandler } from './http/api-errors.js';
 import { processDueNotifications, purgeFinishedNotifications } from './ops/notificationOutbox.js';
-import { notifyDmsLogout } from './auth/logout-notify.js';
+import { notifyAppLogout, notifyDmsLogout } from './auth/logout-notify.js';
 import { revokeGmsSessionsByEmail } from './bridge/gms.js';
 import { sweepWebSessions } from './db/web-sessions.js';
 import { buildProvider } from './oidc/provider.js';
@@ -63,6 +63,9 @@ import { cspMiddleware } from './http/csp.js';
 import { logger } from './logging/logger.js';
 import { resyncActiveAdSessions } from './auth/ad-resync.worker.js';
 import { licenseReadOnlyGuard } from './licenses/guard.js';
+import { incidentReadOnlyGuard } from './ops/incidentGuard.js';
+import { startIncidentResponse } from './ops/incidents.js';
+import { scanPrivilegeChanges } from './ops/privilegeWatch.js';
 
 /** Sweep tables with no other purge path: oidc-provider's own artifacts (full
  *  claims payloads incl. ad_groups), the sign-in event log, and expired
@@ -100,6 +103,7 @@ function startNotificationJob(): void {
   const handlers = {
     // queueOnFailure false: this job already owns the row, a failure here must not create a second one.
     'dms-logout': (accountId: string) => notifyDmsLogout(accountId, { queueOnFailure: false }),
+    'app-logout': (clientId: string, accountId: string) => notifyAppLogout(clientId, accountId, { queueOnFailure: false }),
     'gms-revoke': (email: string) => revokeGmsSessionsByEmail(email),
   };
   const run = (): void => {
@@ -140,6 +144,19 @@ function startAuditChainJob(): void {
     });
   };
   setTimeout(run, 60_000).unref();
+  setInterval(run, EVERY_MS).unref();
+}
+
+/** Compares who is an IdP administrator with what the owner's audit rows explain (ops/privilegeWatch.ts); every five minutes and shortly after start. */
+function startPrivilegeWatchJob(): void {
+  const EVERY_MS = 5 * 60_000;
+  declareJob('privilege-watch', EVERY_MS / 1000);
+  const run = (): void => {
+    trackJob('privilege-watch', async () => { await scanPrivilegeChanges(); }).catch((err) => {
+      logger.error({ err }, '[idp:incident] privilege watch could not run');
+    });
+  };
+  setTimeout(run, 90_000).unref();
   setInterval(run, EVERY_MS).unref();
 }
 
@@ -203,6 +220,9 @@ async function main(): Promise<void> {
 
   // SSO's own licence: read-only once it has expired and its grace period is over (licenses/guard.ts; no licence row, no effect).
   app.use(licenseReadOnlyGuard());
+
+  // Read-only containment while an incident lock is in force (ops/incidentGuard.ts; INCIDENT_LOCK_FILE unset and no in-process lock: no effect).
+  app.use(incidentReadOnlyGuard());
 
   // Canonical-host guard: deliberately NOT here.
   //
@@ -610,6 +630,8 @@ async function main(): Promise<void> {
   startAdResyncJob();
   startNotificationJob();
   startAuditChainJob();
+  startIncidentResponse();
+  if (IDP_CONFIG.incidentResponse !== 'off') startPrivilegeWatchJob();
 
   // Let in-flight /token and /interaction requests finish instead of a hard kill on every rolling deploy. Both listeners close
   // (the gateway used to be left open); idle keep-alive sockets are dropped at once and anything still running after 8 s is cut,

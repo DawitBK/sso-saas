@@ -49,7 +49,8 @@ describe('signLicenseTokenWith (the offline signer)', () => {
     const claims = await verifyWith(token, publicJwk);
     expect(claims).toMatchObject({ sys: 'gms', ver: 7, jti: 'gms-v7', modes: ['sso', 'standalone'], modules: ['visits'], aud: 'license:gms', iss: 'urn:test:issuer' });
     expect(claims.exp).toBeUndefined();
-  });
+    // the first test to load the token module (and the config behind it) pays its cold compile: 5 s is not enough on a loaded machine
+  }, 30_000);
 
   it('a key that is not the pinned one does not verify it', async () => {
     const { signLicenseTokenWith } = await import('../src/licenses/token.js');

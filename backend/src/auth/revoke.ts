@@ -15,7 +15,7 @@
 
 import { pool } from '../db/pool.js';
 import { revokeGmsSessionsByEmail } from '../bridge/gms.js';
-import { notifyDmsLogout } from './logout-notify.js';
+import { notifyAppLogouts, notifyDmsLogout } from './logout-notify.js';
 import { logger } from '../logging/logger.js';
 import { enqueueNotification } from '../ops/notificationOutbox.js';
 
@@ -34,6 +34,8 @@ export interface RevocationResult {
    */
   gmsSessions: number | 'failed';
   dmsNotified: boolean;
+  /** Client ids of the other registered applications (MOS, product apps) that did not confirm; empty or absent when all did or none is registered. */
+  appsFailed?: string[];
 }
 
 export async function revokeAllSessions(accountId: string, email: string): Promise<RevocationResult> {
@@ -86,7 +88,8 @@ export async function revokeAllSessions(accountId: string, email: string): Promi
   }
 
   // DMS holds its own tokens — tell it to revoke this user's sessions too.
-  const dmsNotified = await notifyDmsLogout(accountId);
+  // The other registered applications (MOS, the product apps) hold their own sessions too.
+  const [dmsNotified, appsFailed] = await Promise.all([notifyDmsLogout(accountId), notifyAppLogouts(accountId)]);
 
   return {
     oidcArtifacts: oidc.rowCount ?? 0,
@@ -95,6 +98,7 @@ export async function revokeAllSessions(accountId: string, email: string): Promi
     pendingLogins: pending.rowCount ?? 0,
     gmsSessions,
     dmsNotified,
+    appsFailed,
   };
 }
 
@@ -114,6 +118,9 @@ export function disableWarning(r: RevocationResult | null): string | null {
     parts.push(
       "DMS did not confirm it ended this person's sessions, so a DMS session may stay live until its token expires"
     );
+  }
+  if (r.appsFailed && r.appsFailed.length > 0) {
+    parts.push(`${r.appsFailed.join(', ')} did not confirm it ended this person's sessions, so a session there may stay live until its token expires`);
   }
   return parts.length
     ? `Account disabled and no new sign-ins are possible, but ${parts.join('; and ')}. SSO keeps trying in the background for 48 hours (see System health); sign the person out in that system by hand if it cannot wait.`

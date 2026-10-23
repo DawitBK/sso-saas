@@ -71,7 +71,7 @@ jest.mock('../src/admin/dms-internal-client.js', () => {
 import express from 'express';
 import { pool } from '../src/db/pool.js';
 import { adminApiRouter, ADMIN_API_CSRF_COOKIE } from '../src/api/v1/admin.router.js';
-import { replaceGroupEntitlements, replaceGroupGmsRole } from '../src/admin/access.js';
+import { personalGroupDn, replaceGroupEntitlements, replaceGroupGmsRole } from '../src/admin/access.js';
 import { IDP_CONFIG } from '../src/config.js';
 
 const TAG = 'jest-v1-actions';
@@ -164,6 +164,18 @@ describe('group App access and GMS role sign members out only on a real change',
     expect(r).toEqual({ apps: ['edams'], changed: true });
     expect(await replaceGroupEntitlements(GROUP, ['edams', 'nonsense'])).toEqual({ apps: ['edams'], changed: false });
     await replaceGroupEntitlements(GROUP, []);
+  });
+
+  it("a person's own App access is held by their personal group and shows on their detail page", async () => {
+    const personal = personalGroupDn(ids.member);
+    expect((await call('POST', '/groups/entitlements', { dn: personal, rp: ['edams'] })).status).toBe(200);
+    const detail = await call('GET', `/users/${ids.member}`);
+    expect(detail.status).toBe(200);
+    expect(detail.json.data.personalDn).toBe(personal);
+    expect(detail.json.data.entitledApps).toEqual(['edams']);
+    expect((detail.json.data.appCatalog as Array<{ rp: string }>).map((a) => a.rp)).toEqual(expect.arrayContaining(['edams', 'gms']));
+    await call('POST', '/groups/entitlements', { dn: personal, rp: [] });
+    expect((await call('GET', `/users/${ids.member}`)).json.data.entitledApps).toEqual([]);
   });
 
   it('GMS role: set, same value, change and clear', async () => {

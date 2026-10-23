@@ -85,7 +85,7 @@ export async function listLicenseRecords(db: Queryable = pool): Promise<LicenseR
   return rows.map(toRecord);
 }
 
-/** Highest version this system ever had, including a revoked licence's: the next licence continues from it, so versions never go backwards. */
+/** Highest version this system ever had, including a revoked licence's: the next licence is always higher than it (version.ts), so versions never go backwards. */
 export async function highestVersionEver(system: LicenseSystem, db: Queryable): Promise<number> {
   const { rows } = await db.query<{ v: number | null }>('SELECT MAX(version) AS v FROM license_events WHERE system = $1', [system]);
   return rows[0]?.v ?? 0;

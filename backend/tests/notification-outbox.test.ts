@@ -11,8 +11,8 @@ import {
 const TAG = 'jest-outbox';
 const acct = (n: string) => `${TAG}-${n}`;
 
-const ok: NotificationHandlers = { 'dms-logout': async () => true, 'gms-revoke': async () => undefined };
-const refused: NotificationHandlers = { 'dms-logout': async () => false, 'gms-revoke': async () => { throw Object.assign(new Error('connect ECONNREFUSED 10.1.1.1:7200'), { code: 'ECONNREFUSED' }); } };
+const ok: NotificationHandlers = { 'dms-logout': async () => true, 'gms-revoke': async () => undefined, 'app-logout': async () => true };
+const refused: NotificationHandlers = { 'dms-logout': async () => false, 'gms-revoke': async () => { throw Object.assign(new Error('connect ECONNREFUSED 10.1.1.1:7200'), { code: 'ECONNREFUSED' }); }, 'app-logout': async () => false };
 
 const row = async (a: string) => (await pool.query('SELECT * FROM idp_pending_notifications WHERE account_id = $1 ORDER BY id DESC LIMIT 1', [a])).rows[0];
 const makeDue = (a: string) => pool.query(`UPDATE idp_pending_notifications SET next_attempt_at = NOW() - INTERVAL '1 second' WHERE account_id = $1 AND status = 'pending'`, [a]);
@@ -132,5 +132,27 @@ describe('visibility and housekeeping', () => {
     await purgeFinishedNotifications();
     const { rows } = await pool.query(`SELECT account_id FROM idp_pending_notifications WHERE account_id LIKE $1 ORDER BY account_id`, [`${TAG}-k%`]);
     expect(rows.map((r) => r.account_id)).toEqual([acct('k3'), acct('k4')]);
+  });
+});
+
+describe('notifications to a registered application (app-logout:<client id>)', () => {
+  it('is queued per application, retried with the client id and the account, and marked done when acknowledged', async () => {
+    await enqueueNotification('app-logout:shop', acct('app'));
+    await enqueueNotification('app-logout:mos', acct('app'));
+    expect((await pool.query('SELECT kind FROM idp_pending_notifications WHERE account_id = $1 ORDER BY kind', [acct('app')])).rows.map((r) => r.kind)).toEqual(['app-logout:mos', 'app-logout:shop']);
+    await enqueueNotification('app-logout:shop', acct('app')); // the same one again: still a single pending row
+    expect((await pool.query("SELECT 1 FROM idp_pending_notifications WHERE account_id = $1 AND kind = 'app-logout:shop'", [acct('app')])).rowCount).toBe(1);
+    await makeDue(acct('app'));
+    const seen: string[] = [];
+    const out = await processDueNotifications({ ...ok, 'app-logout': async (client, account) => { seen.push(`${client}:${account}`); return true; } });
+    expect(out.done).toBeGreaterThanOrEqual(2);
+    expect(seen.sort()).toEqual([`mos:${acct('app')}`, `shop:${acct('app')}`]);
+  });
+
+  it('is rescheduled when the application still does not answer', async () => {
+    await enqueueNotification('app-logout:shop', acct('retry'));
+    await makeDue(acct('retry'));
+    await processDueNotifications(refused);
+    expect(await row(acct('retry'))).toMatchObject({ status: 'pending', attempts: 1 });
   });
 });

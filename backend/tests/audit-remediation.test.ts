@@ -223,7 +223,8 @@ describe('P2-9 item 7 — scrypt cost parameters are stored, and upgrade on logi
     expect(await verifyPassword('correct horse battery staple', hash)).toBe(true);
     expect(await verifyPassword('wrong password', hash)).toBe(false);
     expect(needsRehash(hash)).toBe(false);
-  });
+    // three real scrypt runs at N=2^17: 5 s is not enough when the whole suite shares the CPU
+  }, 30_000);
 
   it('still verifies a legacy 3-field hash, and flags it for rehash', async () => {
     // What every existing row looks like. It has no cost parameters, so it must

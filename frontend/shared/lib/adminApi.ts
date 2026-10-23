@@ -1,4 +1,5 @@
 import { apiPath } from '@shared/apiPath';
+import { ownerFetch } from '@shared/owner/ownerClient';
 
 /**
  * One way for the admin console to call the SSO backend's JSON API (`{ data, meta }` on success, `{ error: { code, message } }` on failure).
@@ -36,7 +37,9 @@ export interface AdminFetchInit {
 export async function adminFetch<T>(path: string, init: AdminFetchInit = {}): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(apiPath(path), {
+    // ownerFetch: identical to fetch unless the server answers that the action needs the owner's authorisation, in which case the
+    // verification dialog runs and the same request is sent again with it.
+    res = await ownerFetch(path, {
       method: init.method ?? 'GET',
       headers: init.body === undefined ? undefined : { 'Content-Type': 'application/json' },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),

@@ -14,6 +14,8 @@ import fs from "node:fs";
 import path from "node:path";
 import dotenv from "dotenv";
 import { parseLicenseEnforcement, parseLicenseRequired } from "./licenses/enforcement.js";
+import { parseOwnerAuthenticatorRequired, parseOwnerVerificationRequired } from "./owner/policy.js";
+import { parseProductClients } from "./oidc/product-clients.js";
 
 // ---------------------------------------------------------------------------
 // ENV FILE LOADING CONTRACT — kept identical between SSO and DMS (each's own
@@ -215,25 +217,8 @@ export const DEV_DEFAULT_CLIENT_SECRETS = [
   "portal-dev-secret",
 ];
 
-function productClients(): Array<{
-  client_id: string;
-  client_secret: string;
-  scope: string;
-  redirect_uris: string[];
-  post_logout_redirect_uris: string[];
-  name: string;
-}> {
-  const raw = process.env.PRODUCT_CLIENTS_JSON;
-  if (!raw) return [];
-  const list = JSON.parse(raw) as Array<{
-    client_id: string;
-    client_secret: string;
-    redirect_uris: string[];
-    post_logout_redirect_uris: string[];
-    name: string;
-  }>;
-  return list.map((c) => ({ ...c, scope: "openid profile email" }));
-}
+/** Extra applications from PRODUCT_CLIENTS_JSON, parsed once (a malformed list stops the start; oidc/product-clients.ts). */
+const PRODUCT_CLIENT_LIST = parseProductClients(process.env.PRODUCT_CLIENTS_JSON);
 
 export const IDP_CONFIG = {
   env: NODE_ENV,
@@ -343,6 +328,47 @@ export const IDP_CONFIG = {
   licenseSigningKeyFile: (process.env.LICENSE_SIGNING_KEY_FILE ?? "").trim(),
 
   /**
+   * Owner verification (docs/sso/SSO-OPERATIONS.md, "Owner verification"): a per-operation, server-side check that whoever uses the platform administrator's
+   * session is the owner (security questions, emailed code or recovery code, authenticator). OWNER_VERIFICATION_REQUIRED defaults to true in production,
+   * the mirror and any non-local issuer, false in development and tests. Required and not enrolled = owner-only operations are REFUSED (OWNER_NOT_ENROLLED).
+   * OWNER_STORE_KEY_FILE: the AES key file for the sealed owner store, outside the repository (created by "npm run owner:enroll"). The owner's mailbox address and
+   * every secret live only in that sealed store, never in an env file. SMTP_* send the emailed code; if they are unset or changed the emailed code is unavailable
+   * and an offline recovery code takes its place (never fewer factors).
+   */
+  ownerVerificationRequired: parseOwnerVerificationRequired(process.env.OWNER_VERIFICATION_REQUIRED, NODE_ENV, isProd).required,
+  ownerVerificationRequiredExplicit: parseOwnerVerificationRequired(process.env.OWNER_VERIFICATION_REQUIRED, NODE_ENV, isProd).explicit,
+  ownerStoreKeyFile: (process.env.OWNER_STORE_KEY_FILE ?? "").trim(),
+  /**
+   * OWNER_AUTHENTICATOR_REQUIRED (default false, owner decision 2026-10-21; only the word true turns it on): whether a NEW owner enrolment (owner:enroll / owner:recover) includes the phone authenticator. With false (the default) the
+   * owner proves themselves with the security questions and the emailed code (or one recovery code). It only decides what a new enrolment asks for: the factors
+   * of an enrolment are recorded inside the sealed owner store and verification always demands those, so changing this later never weakens an existing one.
+   */
+  ownerAuthenticatorRequired: parseOwnerAuthenticatorRequired(process.env.OWNER_AUTHENTICATOR_REQUIRED).required,
+  ownerAuthenticatorRequiredExplicit: parseOwnerAuthenticatorRequired(process.env.OWNER_AUTHENTICATOR_REQUIRED).explicit,
+  smtp: {
+    host: (process.env.SMTP_HOST ?? "").trim(),
+    port: envInt("SMTP_PORT", 587),
+    secure: (process.env.SMTP_SECURE ?? "").trim().toLowerCase() === "true",
+    user: (process.env.SMTP_USER ?? "").trim(),
+    pass: process.env.SMTP_PASS ?? "",
+    from: (process.env.SMTP_FROM ?? "").trim(),
+  },
+
+  /**
+   * Incident containment (docs: SSO-OPERATIONS.md, "Tamper detection and incident response"). INCIDENT_LOCK_FILE: while this file exists every
+   * state-changing request is refused 403 INCIDENT_READ_ONLY (ops/incidentLock.ts); unset = off. INCIDENT_RESPONSE: `contain` (record, alert, revoke the
+   * offending actor's sessions, lock) | `alert` (record and alert only) | `off` (detectors silent). Default: contain in production, alert elsewhere,
+   * so development is never locked unless someone switches it on.
+   */
+  incidentLockFile: (process.env.INCIDENT_LOCK_FILE ?? "").trim(),
+  incidentResponse: ((): "contain" | "alert" | "off" => {
+    const v = (process.env.INCIDENT_RESPONSE ?? "").trim().toLowerCase();
+    return v === "contain" || v === "alert" || v === "off" ? v : isProd ? "contain" : "alert";
+  })(),
+  /** Shared-secret file for the read-only chain-head endpoint the tamper watcher calls (ops/chainHead). Unset = that endpoint answers 404. */
+  opsWatchKeyFile: (process.env.OPS_WATCH_KEY_FILE ?? "").trim(),
+
+  /**
    * How many password checks (scrypt, ~128 MB and a fraction of a second each) may run at once, how many may wait, and how long one
    * may wait before it is turned away with "busy, try again". Without a bound, a flood of sign-in attempts from many addresses
    * queues unlimited scrypt jobs on libuv's small thread pool (shared with DNS lookups and file access), exhausting memory and
@@ -439,6 +465,16 @@ export const IDP_CONFIG = {
      */
     internalTimeoutMs: envInt("DMS_INTERNAL_TIMEOUT_MS", 4000),
   },
+  /**
+   * The applications besides DMS and GMS that are told, server to server, when a person's SSO session ends (auth/logout-notify.ts): MOS (when MOS_ENABLED=true and
+   * MOS_BACKCHANNEL_LOGOUT_URI is set) and every PRODUCT_CLIENTS_JSON entry that has a backchannel_logout_uri. Empty when none is configured.
+   */
+  appLogoutTargets: [
+    ...(process.env.MOS_ENABLED === "true" && (process.env.MOS_BACKCHANNEL_LOGOUT_URI ?? "").trim()
+      ? [{ client_id: "mos", uri: (process.env.MOS_BACKCHANNEL_LOGOUT_URI ?? "").trim() }]
+      : []),
+    ...PRODUCT_CLIENT_LIST.filter((c) => c.backchannel_logout_uri).map((c) => ({ client_id: c.client_id, uri: c.backchannel_logout_uri as string })),
+  ] as Array<{ client_id: string; uri: string }>,
   dmsInternalApiKey: process.env.DMS_INTERNAL_API_KEY ?? "",
   dmsDefaultTenant: process.env.DMS_DEFAULT_TENANT ?? "examplecorp",
 
@@ -569,7 +605,7 @@ export const IDP_CONFIG = {
     // MOS (Manufacturing Operations Suite, on Odoo) signs in through this IdP. Registered ONLY when MOS_ENABLED=true, and
     // then with no fallbacks: a secret or address that is missing is a startup error, so a production IdP can never boot
     // with a seeded client that still holds a development secret or a localhost address (assertProdSafeDefaults).
-    // MOS is a standalone product: it has no portal tile and no app-access entry.
+    // MOS is a standalone product: it has no app-access entry; its portal tile (portal/catalog.ts) appears only when MOS_PORTAL_URL is set.
     ...(process.env.MOS_ENABLED === "true"
       ? [
           {
@@ -582,10 +618,10 @@ export const IDP_CONFIG = {
           },
         ]
       : []),
-    // The product apps (Retail OS, JobPilot, Martronics, Library) sign in through this IdP too. PRODUCT_CLIENTS_JSON is a
-    // JSON list of {client_id, client_secret, redirect_uris, post_logout_redirect_uris, name}, written by the hosting
-    // tooling; absent means none. Same rule as MOS: every secret and address comes from the environment, none has a default.
-    ...productClients(),
+    // Other applications that sign in through this IdP (oidc/product-clients.ts): PRODUCT_CLIENTS_JSON is a JSON list of
+    // {client_id, client_secret, redirect_uris, post_logout_redirect_uris, name}; absent or empty means none. Same rule as MOS:
+    // every secret and address comes from the environment, none has a default, and a malformed list stops the start.
+    ...PRODUCT_CLIENT_LIST.map(({ backchannel_logout_uri: _backchannel, ...client }) => client),
   ],
 };
 

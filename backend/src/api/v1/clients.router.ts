@@ -24,6 +24,7 @@ import { IDP_CONFIG } from '../../config.js';
 import type { PortalSession } from '../../portal/session.js';
 import { getClientDetails, isManagedClient, listClientDetails, rotateClientSecret, setClientActive, updateClientUris } from '../../oidc/client-admin.js';
 import { validateClientUris } from '../../oidc/client-validation.js';
+import { requireOwnerAuthorisation } from '../../owner/middleware.js';
 import { issueAdminCsrf, validateAdminApiCsrf } from './admin.router.js';
 import { sendError, sendOk } from './platform.router.js';
 
@@ -103,7 +104,7 @@ export function clientsRouter(): Router {
     sendOk(res, { client, csrf: issueAdminCsrf(res), ...extra }, status);
   }
 
-  router.put('/:clientId/uris', async (req: Request, res: Response, next: NextFunction) => {
+  router.put('/:clientId/uris', requireOwnerAuthorisation('client.uris.update', (req) => String(req.params.clientId)), async (req: Request, res: Response, next: NextFunction) => {
     try {
       const g = await gate(req, res);
       if (!g) return;
@@ -126,7 +127,7 @@ export function clientsRouter(): Router {
     }
   });
 
-  router.post('/:clientId/restore-uris', async (req: Request, res: Response, next: NextFunction) => {
+  router.post('/:clientId/restore-uris', requireOwnerAuthorisation('client.uris.restore', (req) => String(req.params.clientId)), async (req: Request, res: Response, next: NextFunction) => {
     try {
       const g = await gate(req, res);
       if (!g) return;
@@ -140,7 +141,7 @@ export function clientsRouter(): Router {
     }
   });
 
-  router.put('/:clientId/active', async (req: Request, res: Response, next: NextFunction) => {
+  router.put('/:clientId/active', requireOwnerAuthorisation('client.active.set', (req) => String(req.params.clientId)), async (req: Request, res: Response, next: NextFunction) => {
     try {
       const g = await gate(req, res);
       if (!g) return;
@@ -155,7 +156,7 @@ export function clientsRouter(): Router {
     }
   });
 
-  router.post('/:clientId/rotate-secret', async (req: Request, res: Response, next: NextFunction) => {
+  router.post('/:clientId/rotate-secret', requireOwnerAuthorisation('client.secret.rotate', (req) => String(req.params.clientId)), async (req: Request, res: Response, next: NextFunction) => {
     try {
       const g = await gate(req, res);
       if (!g) return;

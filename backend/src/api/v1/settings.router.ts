@@ -18,6 +18,7 @@ import type { PortalSession } from '../../portal/session.js';
 import { SETTING_GROUPS, readableInk, settingDef, type SettingDef } from '../../settings/registry.js';
 import { getBool, getNumber, getString, listSettingStates, resetSetting, setSetting } from '../../settings/store.js';
 import { APP_REGISTRY } from '../../portal/catalog.js';
+import { authoriseOwnerOperation } from '../../owner/middleware.js';
 import { issueAdminCsrf, validateAdminApiCsrf } from './admin.router.js';
 import { sendError, sendOk } from './platform.router.js';
 
@@ -98,6 +99,8 @@ export function settingsAdminRouter(): Router {
       sendError(res, 403, 'ERR-INVALID-CSRF', 'Invalid CSRF token');
       return null;
     }
+    // A platform-owned setting also needs the owner's authorisation for this one change (owner/registry.ts, setting.change; target = the setting).
+    if (def.editableBy === 'platform' && !(await authoriseOwnerOperation(req, res, 'setting.change', def.key))) return null;
     // The platform administrator is recorded as 'platform', never by address (auth/platform-admin.ts).
     return { def, session, actor: isPlatform ? 'platform' : session.email };
   }

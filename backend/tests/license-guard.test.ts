@@ -118,6 +118,14 @@ describe('the allowlist keeps working while expired: one test per entry', () => 
     ['PUT', '/api/v1/internal/gms/users/a%40b.co/roles'],
     ['POST', '/api/v1/admin/keys/generate'],
     ['POST', '/api/v1/admin/keys/abc/retire'],
+    // the owner's verification sequence: it is how a licence is saved in production, so it must work while a licence is missing or expired
+    ['POST', '/api/v1/owner/verification/start'],
+    ['POST', '/api/v1/owner/verification/answer-questions'],
+    ['POST', '/api/v1/owner/verification/send-email-code'],
+    ['POST', '/api/v1/owner/verification/verify-email-code'],
+    ['POST', '/api/v1/owner/verification/verify-recovery-code'],
+    ['POST', '/api/v1/owner/verification/verify-totp'],
+    ['POST', '/api/v1/owner/verification/finish'],
   ])('real route %s %s passes', async (method, path) => {
     expect((await send(method, path)).json).toEqual({ reached: true });
   });
@@ -152,6 +160,8 @@ describe('isAllowlisted', () => {
     expect(isAllowlisted('/tokens')).toBe(false);
     expect(isAllowlisted('/api/v1/admin/licenses')).toBe(true);
     expect(isAllowlisted('/api/v1/admin/licensesx')).toBe(false);
+    expect(isAllowlisted('/api/v1/owner/verification/start')).toBe(true);
+    expect(isAllowlisted('/api/v1/owner/verificationx')).toBe(false);
     expect(isAllowlisted('/api/v1/admin/users')).toBe(false);
     expect(isAllowlisted('/')).toBe(false);
   });

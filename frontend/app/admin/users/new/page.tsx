@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { apiPath } from "@shared/apiPath";
+import { ownerFetch } from "@shared/owner/ownerClient";
 import { PageSkeleton } from '@shared/ui/States';
 
 interface RoleCatalog {
@@ -95,7 +96,7 @@ export default function NewUserPage() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(apiPath("/api/v1/admin/users"), {
+      const res = await ownerFetch("/api/v1/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -16,6 +16,8 @@ import {
   SlidersHorizontal,
   HeartPulse,
   BadgeCheck,
+  Fingerprint,
+  ShieldAlert,
   ChevronRight,
   LogOut,
   type LucideIcon,
@@ -57,6 +59,8 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/admin/logins', label: 'Sign-ins', icon: LogIn },
       { href: '/admin/keys', label: 'Keys', icon: KeyRound, platformAdminOnly: true },
       { href: '/admin/audit', label: 'Audit', icon: ScrollText },
+      { href: '/admin/owner-verification', label: 'Owner verification', icon: Fingerprint, platformAdminOnly: true },
+      { href: '/admin/security-incidents', label: 'Security incidents', icon: ShieldAlert, platformAdminOnly: true },
     ],
   },
   {

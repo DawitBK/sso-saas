@@ -38,6 +38,7 @@ const LABELS: Record<string, string> = {
   'client.enable': 'Switched an application on',
   'client.disable': 'Switched an application off',
   'client.secret.rotate': 'Rotated an application’s secret',
+  'security.incident': 'Security incident recorded',
   'license.create': 'Created a licence',
   'license.update': 'Changed a licence',
   'license.extend': 'Extended a licence',

@@ -42,6 +42,9 @@ describe('disableWarning', () => {
   it('names exactly the systems that were not reached', () => {
     expect(disableWarning({ ...ok, dmsNotified: false })).toMatch(/DMS did not confirm/);
     expect(disableWarning({ ...ok, dmsNotified: false })).not.toMatch(/GMS/);
+    expect(disableWarning({ ...ok, appsFailed: [] })).toBeNull();
+    expect(disableWarning({ ...ok, appsFailed: ['shop', 'mos'] })).toMatch(/shop, mos did not confirm/);
+    expect(disableWarning({ ...ok, appsFailed: ['shop'] })).not.toMatch(/DMS|GMS/);
     expect(disableWarning({ ...ok, gmsSessions: 'failed' })).toMatch(/GMS could not be reached/);
     expect(disableWarning({ ...ok, gmsSessions: 'failed' })).not.toMatch(/DMS/);
   });

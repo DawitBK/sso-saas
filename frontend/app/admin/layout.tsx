@@ -6,6 +6,7 @@ import { AdminSidebar } from '../../shared/components/AdminSidebar';
 import { apiPath } from '@shared/apiPath';
 import { useBranding } from '@shared/branding/BrandingProvider';
 import { LicenseBanner } from '../../shared/components/LicenseBanner';
+import { OwnerVerificationProvider } from '@shared/owner/OwnerVerificationProvider';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [adminEmail, setAdminEmail] = useState('');
@@ -39,7 +40,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <>
+    <OwnerVerificationProvider>
       <header className="admin-header">
         <button
           type="button"
@@ -93,6 +94,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {children}
         </main>
       </div>
-    </>
+    </OwnerVerificationProvider>
   );
 }

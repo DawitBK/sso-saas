@@ -15,6 +15,7 @@
  *   licences              /api/v1/licenses  /api/v1/license  /api/v1/admin/licenses  /api/v1/admin/csrf
  *   system to system      /api/v1/internal  /internal   (GMS managing its own role grants: not a console mutation)
  *   security emergencies  /api/v1/admin/keys   (rotating or withdrawing a signing key must stay possible when a key leaks)
+ *   owner verification    /api/v1/owner/verification   (the owner must be able to authorise saving a licence, which is how an expired or missing one is repaired)
  * Everything else that mutates, i.e. the rest of the admin console (users, groups, settings, applications, sessions, reset requests, bulk
  * actions, audit acknowledgements), is read-only.
  */
@@ -36,6 +37,7 @@ export const READ_ONLY_ALLOWLIST: readonly string[] = [
   '/api/v1/licenses', '/api/v1/license', '/api/v1/admin/licenses', '/api/v1/admin/csrf',
   '/api/v1/internal', '/internal',
   '/api/v1/admin/keys',
+  '/api/v1/owner/verification',
 ];
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);

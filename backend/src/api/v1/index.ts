@@ -15,6 +15,8 @@ import { clientsRouter } from './clients.router.js';
 import { usersBulkRouter } from './users-bulk.router.js';
 import { activityRouter } from './activity.router.js';
 import { licensesAdminRouter, licensesPublicRouter } from './licenses.router.js';
+import { opsWatchRouter, securityIncidentsRouter } from './security-incidents.router.js';
+import { ownerVerificationRouter } from './owner.router.js';
 import { publicResetRequestRouter, resetRequestsAdminRouter } from './reset-requests.router.js';
 import { createLimiter } from '../../infrastructure/rateLimiter.js';
 
@@ -47,6 +49,13 @@ export function apiV1Router(provider: Provider): Router {
 
   // Licences (platform administrator only; ahead of the generic /admin routers)
   router.use('/admin/licenses', licensesAdminRouter());
+
+  // Security incidents (platform administrator only, read-only) and the HMAC-authenticated chain head for the tamper watcher
+  router.use('/admin/security-incidents', securityIncidentsRouter());
+  router.use('/ops', opsWatchRouter());
+
+  // Owner verification: the sequence that produces the ticket an owner-only operation needs (platform administrator only; everyone else gets a 404)
+  router.use('/owner/verification', ownerVerificationRouter());
 
   // Platform settings (own router: its routes are not under the user/group/session families below)
   router.use('/admin/settings', settingsAdminRouter());

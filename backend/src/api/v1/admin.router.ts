@@ -13,6 +13,8 @@
  */
 
 import { PA_EMAILS_SQL, PA_IDS_SQL, guardPlatformAdminUserParam, isPlatformAdminSession } from "../../auth/platform-admin.js";
+import { reportNonOwnerPrivilegeAttempt } from "../../ops/privilegeWatch.js";
+import { authoriseOwnerOperation } from "../../owner/middleware.js";
 import {
   Router,
   type Request,
@@ -562,9 +564,13 @@ export function adminApiRouter(): Router {
         // Who is an IdP administrator is the platform administrator's call alone. Checked before anything is created.
         const grantsIdpAdmin = req.body.is_admin === true || req.body.is_admin === "on" || req.body.is_admin === "true";
         if (grantsIdpAdmin && !(await isPlatformAdminSession(session))) {
+          reportNonOwnerPrivilegeAttempt({ userId: session.accountId, email: session.email, ip: req.ip }, "console.admin_group");
+
           sendError(res, 403, "ERR-PLATFORM-ADMIN-ONLY", "Only the platform administrator can make someone an IdP administrator.");
           return;
         }
+        // The owner's authorisation for this one change (owner/registry.ts, idp_admin.change; target = the address being made an administrator).
+        if (grantsIdpAdmin && !(await authoriseOwnerOperation(req, res, "idp_admin.change", email))) return;
         const dmsDepartmentIds: string[] = Array.from(
           new Set<string>(
             (Array.isArray(req.body.dms_department_ids)
@@ -786,9 +792,13 @@ export function adminApiRouter(): Router {
             [userId, IDP_CONFIG.adminGroup],
           );
           if (wantsAdminEarly !== adminNow.length > 0 && !(await isPlatformAdminSession(session))) {
+            reportNonOwnerPrivilegeAttempt({ userId: session.accountId, email: session.email, ip: req.ip }, "console.admin_group");
+
             sendError(res, 403, "ERR-PLATFORM-ADMIN-ONLY", "Only the platform administrator can change who is an IdP administrator.");
             return;
           }
+          // Making someone an IdP administrator, or ending it, needs the owner's authorisation (owner/registry.ts, idp_admin.change; target = the person).
+          if (wantsAdminEarly !== adminNow.length > 0 && !(await authoriseOwnerOperation(req, res, "idp_admin.change", userId))) return;
         }
         const previousDms = await liveDmsStatus(rows[0].email, rid(res));
         const previousDepartmentIds = previousDms.exists
@@ -1182,9 +1192,12 @@ export function adminApiRouter(): Router {
           const grantsAdmin = groupDn === IDP_CONFIG.adminGroup;
           if (grantsAdmin) {
             if (!(await isPlatformAdminSession(session))) {
+              reportNonOwnerPrivilegeAttempt({ userId: session.accountId, email: session.email, ip: req.ip }, "console.admin_group");
+
               sendError(res, 403, "ERR-PLATFORM-ADMIN-ONLY", "Only the platform administrator can change who is an IdP administrator.");
               return;
             }
+            if (!(await authoriseOwnerOperation(req, res, "idp_admin.change", userId))) return;
           }
           const allowed = await addableGroupDns(rid(res));
           if (!allowed.has(groupDn)) {
@@ -1253,9 +1266,12 @@ export function adminApiRouter(): Router {
         const userId = String(req.params.id);
         const groupDn = String(req.body.group_dn ?? "");
         if (groupDn === IDP_CONFIG.adminGroup && !(await isPlatformAdminSession(session))) {
+          reportNonOwnerPrivilegeAttempt({ userId: session.accountId, email: session.email, ip: req.ip }, "console.admin_group");
+
           sendError(res, 403, "ERR-PLATFORM-ADMIN-ONLY", "Only the platform administrator can change who is an IdP administrator.");
           return;
         }
+        if (groupDn === IDP_CONFIG.adminGroup && !(await authoriseOwnerOperation(req, res, "idp_admin.change", userId))) return;
         const { rows } = await pool.query<{ email: string }>(
           "SELECT email FROM idp_users WHERE id = $1",
           [userId],

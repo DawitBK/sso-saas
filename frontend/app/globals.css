@@ -630,3 +630,41 @@ select.ui-input { height: 36px; padding: 0 10px; }
 .license-banner { flex-wrap: wrap; }
 .license-banner > span { flex: 1 1 260px; font-size: 13px; }
 @media (max-width: 640px) { .license-form { grid-template-columns: 1fr; } .license-revoke { margin-left: 0; } }
+
+/* Owner verification (shared/owner, app/admin/owner-verification) */
+.owner-dialog { font-size: 14px; line-height: 1.55; }
+.owner-dialog p { margin: 0 0 10px; }
+.owner-form { display: grid; gap: 12px; }
+.owner-form > p { margin: 0; }
+.owner-action { font-size: 15px; }
+.owner-warning { padding: 10px 12px; border-radius: var(--radius-md); background: var(--warning-bg); border: 1px solid var(--warning-border); color: var(--warning-text); }
+.owner-notice { padding: 10px 12px; border-radius: var(--radius-md); background: var(--info-bg); border: 1px solid var(--info-border); color: var(--info-text); }
+.owner-step-help { color: var(--muted); }
+.owner-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+.owner-live { min-height: 0; }
+.owner-error { margin-top: 10px !important; font-size: 13px; }
+.owner-code { letter-spacing: .3em; font-variant-numeric: tabular-nums; max-width: 11em; }
+.owner-progress { margin-bottom: 14px; }
+.owner-progress-label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin: 0 0 8px !important; }
+.owner-progress ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.owner-progress li { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+.owner-progress li.current { color: var(--ink); font-weight: 700; }
+.owner-progress li.done { color: var(--success-text); }
+.owner-progress-mark { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--border); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; background: var(--surface-raised); }
+.owner-progress li.current .owner-progress-mark { border-color: var(--brand); background: var(--brand); color: var(--brand-ink); }
+.owner-progress li.done .owner-progress-mark { border-color: var(--success-border); background: var(--success-bg); color: var(--success-text); }
+.owner-status { margin: 0; display: grid; gap: 12px; }
+.owner-status > div { display: grid; grid-template-columns: minmax(150px, 220px) 1fr; gap: 6px 14px; align-items: start; }
+.owner-status dt { font-weight: 600; font-size: 13px; }
+.owner-status dd { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.owner-status-note { color: var(--muted); font-size: 13px; line-height: 1.5; flex: 1 1 260px; }
+.owner-help { margin: 0 0 8px; padding-left: 20px; font-size: 13px; line-height: 1.6; display: grid; gap: 4px; }
+.owner-details { margin-top: 10px; font-size: 13px; }
+.owner-details summary { cursor: pointer; font-weight: 600; }
+.owner-commands { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.owner-commands li { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.owner-command { font-size: 13px; padding: 6px 10px; color: var(--ink); user-select: all; width: fit-content; max-width: 100%; }
+.owner-ticket { margin: 16px 0 0; border-color: var(--warning-border); }
+.owner-ticket-text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; word-break: break-all; resize: none; }
+.owner-countdown { font-weight: 700; font-variant-numeric: tabular-nums; margin: 6px 0 0; }
+@media (max-width: 640px) { .owner-status > div { grid-template-columns: 1fr; } .owner-actions { justify-content: stretch; } .owner-actions .admin-btn { flex: 1 1 auto; justify-content: center; } }

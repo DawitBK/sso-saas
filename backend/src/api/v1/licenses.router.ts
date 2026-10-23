@@ -3,6 +3,7 @@
  *
  *   GET    /api/v1/licenses/public/:system      UNAUTHENTICATED, rate-limited: 200 { token } (also { data: { token } }), or 404 when that system has no licence.
  *                                               The token is a signed JWS that holds no secret; GMS and DMS poll it (see licenses/token.ts).
+ *   GET    /api/v1/licenses/public/sso-expiry   UNAUTHENTICATED: 200 { token } = the "SSO ends on this date" note (licenses/ceiling.ts), or 404 when SSO has no licence.
  *   GET    /api/v1/licenses/status              SSO's own status (contract section 5 shape), the platform administrator only. Also served at /api/v1/license/status.
  *   GET    /api/v1/admin/licenses               every system's licence, state, the module catalogue and the last changes     (platform administrator)
  *   PUT    /api/v1/admin/licenses/:system       create or update ({ customer, expiresAt|null, graceDays, warnDays, maxUsers|null, modules|null, notes, csrf })
@@ -21,11 +22,15 @@ import { IDP_CONFIG } from '../../config.js';
 import { createLimiter } from '../../infrastructure/rateLimiter.js';
 import type { PortalSession } from '../../portal/session.js';
 import { LICENSE_SYSTEMS, MODULE_CATALOG, SYSTEM_LABELS, isLicenseSystem, type LicenseSystem } from '../../licenses/catalog.js';
-import { findLicense, listEvents, listLicenseRecords } from '../../licenses/repository.js';
+import { signCeilingToken } from '../../licenses/ceiling.js';
+import { followSso } from '../../licenses/follow.js';
+import { findLicense, highestVersionEver, listEvents, listLicenseRecords } from '../../licenses/repository.js';
+import { pool } from '../../db/pool.js';
 import { LicenseError, extendLicense, revokeLicense, saveLicense, type Actor } from '../../licenses/service.js';
 import { ownLicenseStatus } from '../../licenses/status.js';
 import { computeLicenseState } from '../../licenses/state.js';
 import { signLicenseToken } from '../../licenses/token.js';
+import { requireOwnerAuthorisation } from '../../owner/middleware.js';
 import { issueAdminCsrf, validateAdminApiCsrf } from './admin.router.js';
 import { sendError, sendOk } from './platform.router.js';
 import { logger } from '../../logging/logger.js';
@@ -45,6 +50,23 @@ export function licensesPublicRouter(): Router {
   // 60 a minute per address: GMS and DMS poll every 5 minutes (from the same loopback address on this server), so this is generous.
   const publicLimiter = createLimiter('license-public', { windowMs: 60_000, limit: 60 });
 
+  // The "SSO ends on this date" note for clients that hold OFFLINE licences (licenses/ceiling.ts). Declared before /public/:system so the path is not read as a system.
+  router.get('/public/sso-expiry', publicLimiter, async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const sso = await findLicense('sso');
+      if (!sso) {
+        sendError(res, 404, 'ERR-LICENSE-NOT-FOUND', 'No licence for SSO.');
+        return;
+      }
+      const token = await signCeilingToken(sso, await highestVersionEver('sso', pool));
+      res.set('cache-control', 'no-store');
+      res.status(200).json({ token, data: { token }, meta: { requestId: String(res.locals.requestId ?? '') } });
+    } catch (err) {
+      logger.error({ err, requestId: res.locals.requestId }, '[idp:license] could not issue the SSO expiry note');
+      next(err);
+    }
+  });
+
   router.get('/public/:system', publicLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
       const system = String(req.params.system);
@@ -54,7 +76,9 @@ export function licensesPublicRouter(): Router {
         sendError(res, 404, 'ERR-LICENSE-NOT-FOUND', 'No licence for this system.');
         return;
       }
-      const token = await signLicenseToken(license);
+      // A client's token follows SSO's own expiry (owner decision 2026-10-21, licenses/follow.ts): whichever ends first counts.
+      const effective = followSso(license, await findLicense('sso'), await highestVersionEver('sso', pool));
+      const token = await signLicenseToken(effective);
       res.set('cache-control', 'no-store');
       // `token` at the top level is the contract's `200 { token }`; `data.token` is SSO's usual envelope. Both carry the same string.
       res.status(200).json({ token, data: { token }, meta: { requestId: String(res.locals.requestId ?? '') } });
@@ -151,7 +175,7 @@ export function licensesAdminRouter(): Router {
     }
   });
 
-  router.put('/:system', async (req: Request, res: Response, next: NextFunction) => {
+  router.put('/:system', requireOwnerAuthorisation('license.save', (req) => String(req.params.system)), async (req: Request, res: Response, next: NextFunction) => {
     try {
       const g = await gate(req, res, true);
       if (!g) return;
@@ -162,7 +186,7 @@ export function licensesAdminRouter(): Router {
     }
   });
 
-  router.post('/:system/extend', async (req: Request, res: Response, next: NextFunction) => {
+  router.post('/:system/extend', requireOwnerAuthorisation('license.extend', (req) => String(req.params.system)), async (req: Request, res: Response, next: NextFunction) => {
     try {
       const g = await gate(req, res, true);
       if (!g) return;
@@ -173,7 +197,7 @@ export function licensesAdminRouter(): Router {
     }
   });
 
-  router.delete('/:system', async (req: Request, res: Response, next: NextFunction) => {
+  router.delete('/:system', requireOwnerAuthorisation('license.revoke', (req) => String(req.params.system)), async (req: Request, res: Response, next: NextFunction) => {
     try {
       const g = await gate(req, res, true);
       if (!g) return;

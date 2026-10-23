@@ -23,6 +23,7 @@ import { pool } from '../db/pool.js';
 import { revokeAllSessions } from '../auth/revoke.js';
 import { logger } from '../logging/logger.js';
 import { getNumber } from '../settings/store.js';
+import { pinEndSessionOrigin } from './end-session-origin.js';
 
 export async function buildProvider(): Promise<Provider> {
   await seedClients();
@@ -252,6 +253,9 @@ export async function buildProvider(): Promise<Provider> {
    */
   provider.proxy = true;
   (provider.app as unknown as { proxyIpCount: number }).proxyIpCount = IDP_CONFIG.trustProxyHops;
+
+  // The sign-out pages are built for the issuer's own address whatever Host the last proxy reports (end-session-origin.ts).
+  provider.use(pinEndSessionOrigin(IDP_CONFIG.issuer));
 
   // Single logout: when a relying party ends the SSO session (RP-initiated /session/end), the portal session -- the
   // credential of the admin console -- and every other live session of that person must end too. Until now only the

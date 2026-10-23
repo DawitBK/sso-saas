@@ -9,10 +9,10 @@ import fs from "node:fs";
  * the cookie header (which carries the session), and the shared keys other systems present to SSO.
  */
 export const LOG_REDACT_PATHS: string[] = [
-  "req.headers.authorization", "req.headers.cookie", 'req.headers["x-internal-api-key"]', 'req.headers["x-metrics-key"]', 'req.headers["set-cookie"]',
+  "req.headers.authorization", 'req.headers["x-owner-authorisation"]', "req.headers.cookie", 'req.headers["x-internal-api-key"]', 'req.headers["x-metrics-key"]', 'req.headers["set-cookie"]',
   "res.headers['set-cookie']",
   ...["password", "passwordHash", "password_hash", "current_password", "new_password", "confirm_password", "totpSecret", "totp_secret", "recoveryCode", "recovery_code", "authorization_code",
-    "refreshToken", "refresh_token", "accessToken", "access_token", "idToken", "id_token", "logout_token", "client_secret", "clientSecret", "secret", "csrf", "authorization", "cookie"]
+    "answers", "ticket", "recoveryCodes", "refreshToken", "refresh_token", "accessToken", "access_token", "idToken", "id_token", "logout_token", "client_secret", "clientSecret", "secret", "csrf", "authorization", "cookie"]
     .flatMap((k) => [k, `*.${k}`]),
 ];
 

@@ -13,6 +13,8 @@
     "postbuild": "node scripts/build-fingerprint.cjs write .env.production",
     "start": "node scripts/start-standalone.cjs 7301",
     "e2e": "playwright test",
+    "test:unit": "playwright test -c playwright.unit.config.ts",
+    "test:unit:dialog": "node --import ../backend/node_modules/tsx/dist/esm/index.mjs --test tests/unit/owner-dialog.test.ts",
     "build:mirror": "node scripts/build-mirror.cjs",
     "start:mirror": "node scripts/start-mirror.cjs",
     "start:supervised": "node ../deploy/supervise.cjs --name sso-frontend --env NODE_ENV=production --env PORT=7301 --health http://{HOST}:{PORT}/ -- node scripts/start-standalone.cjs",

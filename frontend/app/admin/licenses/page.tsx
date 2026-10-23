@@ -239,8 +239,13 @@ function LicenseCard({ entry, enforcement, getCsrf, onChanged }: {
         <p className="admin-hint" role="note">LICENSE_ENFORCEMENT is “{enforcement}” on this server: SSO shows its state but does not refuse anything.</p>
       ) : null}
       {entry.system !== 'sso' ? (
-        <p className="admin-hint">{entry.system.toUpperCase()} picks a change up within a few minutes (its own polling interval) and enforces it itself.</p>
-      ) : null}
+        <p className="admin-hint">
+          {entry.system.toUpperCase()} picks a change up within a few minutes (its own polling interval) and enforces it itself. It also stops when SSO&apos;s own licence stops: of the two dates, the earlier counts, so
+          a date here is only needed to end it sooner than SSO.
+        </p>
+      ) : (
+        <p className="admin-hint">SSO&apos;s expiry also applies to GMS and DMS: they stop with SSO whether or not they have a date of their own.</p>
+      )}
 
       <div className="license-form">
         {entry.system !== 'sso' ? (
@@ -265,7 +270,7 @@ function LicenseCard({ entry, enforcement, getCsrf, onChanged }: {
             <span className="track" aria-hidden="true" />
             <span>Never expires</span>
           </label>
-          {shown('date') ? <p className="ui-field-error" role="alert">{shown('date')}</p> : <p className="ui-field-hint">Valid through the end of this day (UTC).</p>}
+          {shown('date') ? <p className="ui-field-error" role="alert">{shown('date')}</p> : <p className="ui-field-hint">{draft.never ? 'The date is locked while “Never expires” is on: switch it off to choose a date.' : 'Valid through the end of this day (UTC).'}</p>}
         </div>
 
         <div className="ui-field">
@@ -350,7 +355,7 @@ function LicenseCard({ entry, enforcement, getCsrf, onChanged }: {
       </div>
 
       {license ? (
-        <p className="ui-ref">Version {license.version} · last changed {new Date(license.updatedAt).toLocaleString()} by {license.updatedBy === 'platform' ? 'the platform administrator' : license.updatedBy}</p>
+        <p className="ui-ref" title={`Licence version ${license.version} (the number systems compare: the latest issued is the highest)`}>Issued {new Date(license.updatedAt).toLocaleString()} by {license.updatedBy === 'platform' ? 'the platform administrator' : license.updatedBy}</p>
       ) : null}
 
       <details className="license-history">
@@ -361,7 +366,7 @@ function LicenseCard({ entry, enforcement, getCsrf, onChanged }: {
           <ol>
             {entry.events.map((e) => (
               <li key={e.id}>
-                <span className="ui-ref">{new Date(e.createdAt).toLocaleString()} · v{e.version} · {e.actor === 'platform' ? 'platform administrator' : e.actor}</span>
+                <span className="ui-ref" title={`Licence version ${e.version}`}>{new Date(e.createdAt).toLocaleString()} · {e.actor === 'platform' ? 'platform administrator' : e.actor}</span>
                 <div><strong>{ACTION_LABEL[e.action]}.</strong> {describeEvent(e, labelOf)}</div>
               </li>
             ))}
@@ -416,7 +421,7 @@ export default function LicensesPage() {
           <h1>Licences</h1>
           <p>
             One licence per system, issued here and checked by each system. When one expires there is a warning, then a grace period, then the system becomes read-only:
-            nothing is ever deleted or switched off. A system with no licence is not restricted at all.
+            nothing is ever deleted or switched off. In production and on the practice copy a system with no valid licence refuses everything except sign-in and its health check until one is installed; in development it is not restricted.
           </p>
         </div>
       </div>

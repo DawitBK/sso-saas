@@ -25,6 +25,7 @@ import { writeAudit, acknowledgeChainBreak, ChainAcknowledgementError } from '..
 import { rememberAuditChainResult } from '../../ops/auditChain.js';
 import { rotateSigningKey, retireSigningKey, reloadProviderKeys } from '../../jwks.js';
 import { issueAdminCsrf, validateAdminApiCsrf } from './admin.router.js';
+import { requireOwnerAuthorisation } from '../../owner/middleware.js';
 import type Provider from 'oidc-provider';
 
 // requireAdmin (session lookup, admin-group check) now lives in
@@ -48,7 +49,7 @@ export function adminMutationsRouter(provider: Provider): Router {
    * alone: acknowledging a break is a statement about whether the log can be trusted, and it should come from the one account that is not
    * an ordinary console administrator. The break stays listed; the acknowledgement is itself an entry in the chain.
    */
-  router.post('/audit/chain-acknowledgements', async (req: Request, res: Response, next: NextFunction) => {
+  router.post('/audit/chain-acknowledgements', requireOwnerAuthorisation('audit.chain.acknowledge', (req) => String(req.body?.sequenceNumber ?? '')), async (req: Request, res: Response, next: NextFunction) => {
     try {
       const session = (req as any).adminSession as PortalSession;
       if (!(await isPlatformAdminSession(session))) {
@@ -230,7 +231,7 @@ export function adminMutationsRouter(provider: Provider): Router {
    * POST /api/v1/admin/keys/generate
    * Generate a new signing key
    */
-  router.post('/keys/generate', async (req: Request, res: Response, next: NextFunction) => {
+  router.post('/keys/generate', requireOwnerAuthorisation('signing_key.generate'), async (req: Request, res: Response, next: NextFunction) => {
     try {
       const session = (req as any).adminSession as PortalSession;
 
@@ -263,7 +264,7 @@ export function adminMutationsRouter(provider: Provider): Router {
    * POST /api/v1/admin/keys/:kid/retire
    * Retire a signing key
    */
-  router.post('/keys/:kid/retire', async (req: Request, res: Response, next: NextFunction) => {
+  router.post('/keys/:kid/retire', requireOwnerAuthorisation('signing_key.retire', (req) => String(req.params.kid)), async (req: Request, res: Response, next: NextFunction) => {
     try {
       const session = (req as any).adminSession as PortalSession;
 

@@ -9,6 +9,7 @@
 
 import type { Request } from "express";
 import { PlatformAdminOnlyError, isPlatformAdminEmail } from "../auth/platform-admin.js";
+import { reportNonOwnerPrivilegeAttempt } from "../ops/privilegeWatch.js";
 import { IDP_CONFIG } from "../config.js";
 import { logger } from "../logging/logger.js";
 import { pool } from "../db/pool.js";
@@ -683,7 +684,10 @@ export async function addUserToGroup(
 ): Promise<void> {
   const grantsAdmin = groupDn === IDP_CONFIG.adminGroup;
   // Who is an IdP administrator is decided by the platform administrator alone.
-  if (grantsAdmin && !(await isPlatformAdminEmail(actorEmail))) throw new PlatformAdminOnlyError();
+  if (grantsAdmin && !(await isPlatformAdminEmail(actorEmail))) {
+    reportNonOwnerPrivilegeAttempt({ email: actorEmail, ip: req.ip }, "admin_group.add", { targetUserId: userId });
+    throw new PlatformAdminOnlyError();
+  }
   // Same reasoning as applyAccess's GMS block below: the group-membership
   // write and its audit row are both against this same IdP database, so
   // unlike a cross-DB write there is no reason to leave them as two
@@ -724,7 +728,10 @@ export async function removeUserFromGroup(
   req: Request,
 ): Promise<void> {
   const grantsAdmin = groupDn === IDP_CONFIG.adminGroup;
-  if (grantsAdmin && !(await isPlatformAdminEmail(actorEmail))) throw new PlatformAdminOnlyError();
+  if (grantsAdmin && !(await isPlatformAdminEmail(actorEmail))) {
+    reportNonOwnerPrivilegeAttempt({ email: actorEmail, ip: req.ip }, "admin_group.remove", { targetUserId: userId });
+    throw new PlatformAdminOnlyError();
+  }
   const client = await pool.connect();
   try {
     await client.query("BEGIN");

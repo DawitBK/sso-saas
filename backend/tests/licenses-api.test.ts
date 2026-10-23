@@ -9,6 +9,10 @@
 import type { AddressInfo } from 'node:net';
 import http from 'node:http';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 
 const mockAudit = jest.fn(async (..._a: unknown[]) => undefined);
 const state = { platform: true, session: true };
@@ -42,6 +46,7 @@ import { licensesAdminRouter, licensesPublicRouter } from '../src/api/v1/license
 import { licenseReadOnlyGuard } from '../src/licenses/guard.js';
 import { invalidateOwnLicense } from '../src/licenses/status.js';
 import { resetLicenseTokenCache } from '../src/licenses/token.js';
+import { versionFromTime } from '../src/licenses/version.js';
 
 const CSRF = 'csrf-token-for-jest-licenses';
 const DAY = 86_400_000;
@@ -189,13 +194,13 @@ describe('save (PUT)', () => {
     expect(never.json.data.computed.state).toBe('active');
   });
 
-  it('updating merges, bumps the version and records before and after', async () => {
+  it('updating merges, raises the version and records before and after', async () => {
     const first = await call('PUT', '/api/v1/admin/licenses/gms', gmsLicense);
     const second = await call('PUT', '/api/v1/admin/licenses/gms', { maxUsers: 80, modules: null });
     expect(second.status).toBe(200);
     expect(second.json.data.action).toBe('update');
     expect(second.json.data.license).toMatchObject({ customer: 'Example Corp', maxUsers: 80, modules: null });
-    expect(second.json.data.license.version).toBe(first.json.data.license.version + 1);
+    expect(second.json.data.license.version).toBeGreaterThan(first.json.data.license.version);
     const ev = (await pool.query("SELECT before, after FROM license_events WHERE id > $1 AND system = 'gms' AND action = 'update'", [baselineEventId])).rows[0];
     expect(ev.before.maxUsers).toBe(50);
     expect(ev.after.maxUsers).toBe(80);
@@ -226,12 +231,12 @@ describe('save (PUT)', () => {
 });
 
 describe('extend and revoke', () => {
-  it('extend {days} counts from the later of the expiry and now, bumps the version and is recorded as "extend"', async () => {
+  it('extend {days} counts from the later of the expiry and now, raises the version and is recorded as "extend"', async () => {
     const created = await call('PUT', '/api/v1/admin/licenses/gms', { ...gmsLicense, expiresAt: '2030-01-01T00:00:00Z' });
     const r = await call('POST', '/api/v1/admin/licenses/gms/extend', { days: 90 });
     expect(r.status).toBe(200);
     expect(r.json.data.license.expiresAt).toBe(new Date(Date.UTC(2030, 0, 1) + 90 * DAY).toISOString());
-    expect(r.json.data.license.version).toBe(created.json.data.license.version + 1);
+    expect(r.json.data.license.version).toBeGreaterThan(created.json.data.license.version);
     expect(mockAudit.mock.calls.map((c) => c[2])).toEqual(['license.create', 'license.extend']);
   });
 
@@ -262,7 +267,7 @@ describe('extend and revoke', () => {
     const created = await call('PUT', '/api/v1/admin/licenses/gms', gmsLicense);
     await call('PUT', '/api/v1/admin/licenses/gms', { maxUsers: 60 });
     const before = (await call('GET', '/api/v1/admin/licenses')).json.data.systems[1].license.version;
-    expect(before).toBe(created.json.data.license.version + 1);
+    expect(before).toBeGreaterThan(created.json.data.license.version);
 
     const gone = await call('DELETE', '/api/v1/admin/licenses/gms');
     expect(gone.status).toBe(200);
@@ -275,8 +280,10 @@ describe('extend and revoke', () => {
 
     const again = await call('PUT', '/api/v1/admin/licenses/gms', gmsLicense);
     expect(again.status).toBe(201);
-    // revoke took version before+1, the new licence the next one: strictly higher than anything a consumer could be holding
+    // the revoke took a version above `before`, the new licence the next one: strictly higher than anything a consumer could be holding
     expect(again.json.data.license.version).toBeGreaterThan(before + 1);
+    expect(listed.events[0].version).toBeGreaterThan(before);
+    expect(again.json.data.license.version).toBeGreaterThan(listed.events[0].version);
     expect((await call('DELETE', '/api/v1/admin/licenses/dms')).status).toBe(404);
   });
 
@@ -347,7 +354,7 @@ describe('GET /licenses/public/:system (unauthenticated)', () => {
     noAuth();
     const b = (await call('GET', '/api/v1/licenses/public/gms')).json.token;
     expect(b).not.toBe(a);
-    expect((decodeJwt(b) as any).ver).toBe((decodeJwt(a) as any).ver + 1);
+    expect((decodeJwt(b) as any).ver).toBeGreaterThan((decodeJwt(a) as any).ver);
   });
 
   it('after a revoke it is 404 again', async () => {
@@ -355,6 +362,82 @@ describe('GET /licenses/public/:system (unauthenticated)', () => {
     await call('DELETE', '/api/v1/admin/licenses/gms');
     noAuth();
     expect((await call('GET', '/api/v1/licenses/public/gms')).status).toBe(404);
+  });
+
+  it("a client follows SSO's own expiry when it ends first (owner decision 2026-10-21), and goes back to its own date when SSO is renewed or removed", async () => {
+    await call('PUT', '/api/v1/admin/licenses/gms', gmsLicense); // its own date: 2030-01-01
+    await call('PUT', '/api/v1/admin/licenses/dms', { customer: 'Example Corp', expiresAt: null }); // never expires
+    await call('PUT', '/api/v1/admin/licenses/sso', { customer: 'Example Corp', expiresAt: '2027-03-31', graceDays: 3, warnDays: 9 });
+    noAuth();
+    const claims = async (system: string) => decodeJwt((await call('GET', `/api/v1/licenses/public/${system}`)).json.token) as any;
+    const g1 = await claims('gms');
+    const d1 = await claims('dms');
+    expect(g1).toMatchObject({ expiresAt: '2027-03-31T23:59:59.999Z', graceDays: 3, warnDays: 9 });
+    expect(d1).toMatchObject({ expiresAt: '2027-03-31T23:59:59.999Z', graceDays: 3, warnDays: 9 });
+
+    // SSO renewed beyond the client's own date: the client's own date counts again, and the version only went up (a consumer ignores a lower one).
+    state.platform = true; state.session = true;
+    await call('PUT', '/api/v1/admin/licenses/sso', { customer: 'Example Corp', expiresAt: '2031-01-01', graceDays: 14, warnDays: 30 });
+    noAuth();
+    const g2 = await claims('gms');
+    expect(g2.expiresAt).toBe('2030-01-01T23:59:59.999Z');
+    expect(g2.graceDays).toBe(14);
+    expect(g2.ver).toBeGreaterThan(g1.ver);
+    expect((await claims('dms')).expiresAt).toBe('2031-01-01T23:59:59.999Z'); // never expires, so it ends with SSO
+
+    // SSO's licence removed: the clients keep only their own dates, and the version still does not go backwards.
+    state.platform = true; state.session = true;
+    await call('DELETE', '/api/v1/admin/licenses/sso');
+    noAuth();
+    const g3 = await claims('gms');
+    const d3 = await claims('dms');
+    expect(g3.expiresAt).toBe('2030-01-01T23:59:59.999Z');
+    expect(d3.expiresAt).toBeNull();
+    expect(g3.ver).toBeGreaterThanOrEqual(g2.ver);
+  });
+
+  it('GET /licenses/public/sso-expiry: 404 without an SSO licence; otherwise a note signed with the OIDC key (not a client licence), no exp, version never going back', async () => {
+    noAuth();
+    const none = await call('GET', '/api/v1/licenses/public/sso-expiry');
+    expect(none.status).toBe(404);
+    expect(none.json.error?.code ?? none.json.error).toMatch(/ERR-LICENSE-NOT-FOUND/);
+
+    state.platform = true; state.session = true;
+    await call('PUT', '/api/v1/admin/licenses/sso', { customer: 'Example Corp', expiresAt: '2027-03-31', graceDays: 3, warnDays: 9 });
+    noAuth();
+    const r = await call('GET', '/api/v1/licenses/public/sso-expiry');
+    expect(r.status).toBe(200);
+    expect(r.json.data.token).toBe(r.json.token);
+    const token: string = r.json.token;
+    const header = decodeProtectedHeader(token);
+    expect(header).toMatchObject({ alg: 'RS256', typ: 'kcms-license-ceiling+jwt' });
+    const keys = await loadSigningJwks();
+    const jwk = keys.find((k) => k.kid === header.kid) as unknown as Record<string, string>;
+    expect(jwk).toBeTruthy();
+    const publicKey = crypto.createPublicKey({ key: { kty: jwk.kty, n: jwk.n, e: jwk.e }, format: 'jwk' });
+    const { payload } = await jwtVerify(token, publicKey, { issuer: IDP_CONFIG.issuer, audience: 'license:ceiling', typ: 'kcms-license-ceiling+jwt' });
+    expect(payload).toMatchObject({ sys: 'sso', expiresAt: '2027-03-31T23:59:59.999Z', graceDays: 3, warnDays: 9 });
+    expect(decodeJwt(token).exp).toBeUndefined();
+    // it is not a licence a client could install: wrong typ and audience for a client licence
+    await expect(jwtVerify(token, publicKey, { audience: 'license:gms' })).rejects.toThrow();
+    // same SSO licence, same note; a change raises the version
+    expect((await call('GET', '/api/v1/licenses/public/sso-expiry')).json.token).toBe(token);
+    state.platform = true; state.session = true;
+    await call('PUT', '/api/v1/admin/licenses/sso', { customer: 'Example Corp', expiresAt: '2031-01-01', graceDays: 14, warnDays: 30 });
+    noAuth();
+    const next = decodeJwt((await call('GET', '/api/v1/licenses/public/sso-expiry')).json.token) as any;
+    expect(next.expiresAt).toBe('2031-01-01T23:59:59.999Z');
+    expect(next.ver).toBeGreaterThan((payload as any).ver);
+    // a "never expires" SSO licence travels as null (the client then applies no limit)
+    state.platform = true; state.session = true;
+    await call('PUT', '/api/v1/admin/licenses/sso', { customer: 'Example Corp', expiresAt: null });
+    noAuth();
+    expect(((decodeJwt((await call('GET', '/api/v1/licenses/public/sso-expiry')).json.token)) as any).expiresAt).toBeNull();
+    // revoked: 404 again
+    state.platform = true; state.session = true;
+    await call('DELETE', '/api/v1/admin/licenses/sso');
+    noAuth();
+    expect((await call('GET', '/api/v1/licenses/public/sso-expiry')).status).toBe(404);
   });
 });
 
@@ -428,5 +511,83 @@ describe('SSO enforces its own licence (the real guard)', () => {
     await call('PUT', '/api/v1/admin/licenses/gms', { customer: 'Example Corp', expiresAt: isoDays(-400) });
     await call('PUT', '/api/v1/admin/licenses/dms', { customer: 'Example Corp', expiresAt: isoDays(-400) });
     expect((await settingsPut()).json).toEqual({ reached: true });
+  });
+});
+
+describe('the licence version is the issue time (one rule for the console and the offline signer)', () => {
+  const DAYMS = 86_400_000;
+  let keyDir = '';
+  let keyFile = '';
+
+  beforeAll(() => {
+    keyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'license-version-'));
+    keyFile = path.join(keyDir, 'offline.pem');
+    fs.writeFileSync(keyFile, crypto.generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs8', format: 'pem' }) as string);
+  });
+  afterAll(() => fs.rmSync(keyDir, { recursive: true, force: true }));
+
+  /** A console save with the server clock at `ms`. */
+  async function saveAt(ms: number, body: Record<string, unknown>) {
+    const spy = jest.spyOn(Date, 'now').mockReturnValue(ms);
+    try {
+      return await call('PUT', '/api/v1/admin/licenses/gms', body);
+    } finally {
+      spy.mockRestore();
+    }
+  }
+
+  /** The real offline signer (npm run license:sign), run from source with the clock as it is now. Returns the version inside the token. */
+  function signOffline(...extra: string[]): { ver: number; stdout: string; stderr: string } {
+    const run = spawnSync(
+      process.execPath,
+      ['node_modules/tsx/dist/cli.mjs', 'scripts/license-sign.ts', '--key', keyFile, '--system', 'gms', '--customer', 'Example Corp', '--expires', '2030-01-01', ...extra],
+      { cwd: process.cwd(), encoding: 'utf8', timeout: 60_000 },
+    );
+    expect(run.status).toBe(0);
+    return { ver: (decodeJwt(run.stdout.trim()) as any).ver, stdout: run.stdout, stderr: run.stderr };
+  }
+
+  it('a console save has the version of the moment it was issued: whole seconds since 2026-01-01 UTC', async () => {
+    const lo = versionFromTime(Date.now());
+    const r = await call('PUT', '/api/v1/admin/licenses/gms', gmsLicense);
+    const hi = versionFromTime(Date.now());
+    expect(r.json.data.license.version).toBeGreaterThanOrEqual(lo);
+    expect(r.json.data.license.version).toBeLessThanOrEqual(hi);
+    expect(r.json.data.license.version).toBeGreaterThan(1_000_000);
+  });
+
+  it('THE FAILURE: signed offline first, saved in the console later => the console licence has the higher version (a consumer takes it)', async () => {
+    const offline = signOffline();
+    const console_ = await saveAt(Date.now() + 10_000, gmsLicense);
+    expect(console_.json.data.license.version).toBeGreaterThan(offline.ver);
+  }, 90_000);
+
+  it('THE REVERSE: saved in the console first, signed offline later => the offline licence has the higher version', async () => {
+    const console_ = await saveAt(Date.now() - 10_000, gmsLicense);
+    const offline = signOffline();
+    expect(offline.ver).toBeGreaterThan(console_.json.data.license.version);
+  }, 90_000);
+
+  it('the clock stepping back never lowers the version: the next one is the highest so far plus one', async () => {
+    const ahead = await saveAt(Date.now() + DAYMS, gmsLicense);
+    const back = await call('PUT', '/api/v1/admin/licenses/gms', { maxUsers: 70 });
+    expect(back.json.data.license.version).toBe(ahead.json.data.license.version + 1);
+  });
+
+  it('two changes in the same second still get different, increasing versions', async () => {
+    const t = Date.now();
+    const a = await saveAt(t, gmsLicense);
+    const b = await saveAt(t, { maxUsers: 70 });
+    expect(a.json.data.license.version).toBe(versionFromTime(t));
+    expect(b.json.data.license.version).toBe(a.json.data.license.version + 1);
+  });
+
+  it('revoke, then create again with the clock behind: the new licence is above the revoke, which is above the old licence', async () => {
+    const old = await saveAt(Date.now() + DAYMS, gmsLicense);
+    expect((await call('DELETE', '/api/v1/admin/licenses/gms')).status).toBe(200);
+    const revokeVersion = (await call('GET', '/api/v1/admin/licenses')).json.data.systems[1].events[0].version;
+    expect(revokeVersion).toBeGreaterThan(old.json.data.license.version);
+    const again = await call('PUT', '/api/v1/admin/licenses/gms', gmsLicense);
+    expect(again.json.data.license.version).toBeGreaterThan(revokeVersion);
   });
 });

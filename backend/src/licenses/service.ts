@@ -3,8 +3,9 @@
  *
  * Every change runs in ONE transaction: the `licenses` row, its `license_events` row and its entry in the tamper-evident admin audit chain
  * (writeAudit joins the same client) commit together or not at all, under a per-system advisory lock so two administrators cannot interleave.
- * `version` is bumped on every change and never reused for a system, even across a revoke and a new licence: the next licence continues
- * from the highest version the history has seen, because a consumer ignores any token whose version is lower than the one it holds.
+ * `version` is TIME-ORDERED (version.ts: seconds since 2026-01-01 UTC) and strictly higher than anything this system ever had, even across a
+ * revoke and a new licence, because a consumer ignores any token whose version is lower than the one it holds. The time base is what makes a
+ * console save beat an earlier offline-signed licence (and the reverse): the latest issue wins, whichever channel made it.
  */
 import type { Request } from 'express';
 import { pool } from '../db/pool.js';
@@ -16,6 +17,7 @@ import {
 } from './repository.js';
 import { extendedExpiry, parseExpiry, validateExtendInput, validateLicenseInput, type FieldProblem } from './validation.js';
 import { invalidateOwnLicense } from './status.js';
+import { nextLicenseVersion } from './version.js';
 
 /** A refusal the route turns into a typed answer: HTTP status, error code, a message an administrator can read, and per-field details. */
 export class LicenseError extends Error {
@@ -56,7 +58,9 @@ async function inTransaction<T>(system: LicenseSystem, work: (client: import('pg
 }
 
 async function nextVersion(system: LicenseSystem, existing: LicenseRecord | null, client: import('pg').PoolClient): Promise<number> {
-  return Math.max(existing?.version ?? 0, await highestVersionEver(system, client)) + 1;
+  // max(highest ever + 1, seconds since the epoch): never goes backwards (clock stepped back, same second, a revoke in between) and always
+  // beats a licence issued earlier by any channel.
+  return nextLicenseVersion(Math.max(existing?.version ?? 0, await highestVersionEver(system, client)), Date.now());
 }
 
 async function record(

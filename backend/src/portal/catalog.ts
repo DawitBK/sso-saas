@@ -18,6 +18,7 @@
 
 import { IDP_CONFIG } from '../config.js';
 import { pool } from '../db/pool.js';
+import { parseProductTiles } from '../oidc/product-clients.js';
 import { getList } from '../settings/store.js';
 
 export interface AppTile {
@@ -57,13 +58,6 @@ const ownUrl = (path: string): string => `${IDP_CONFIG.publicBasePath}${path}`;
  * A new system still ALSO needs its OIDC client in config.ts's `clientSeed`
  * (`rp` here is that client's id, or the bridge's name for GMS).
  */
-function productTiles(): Array<{ rp: string; label: string; name: string; enabled: () => boolean; url: () => string }> {
-  const raw = process.env.PRODUCT_APPS_JSON;
-  if (!raw) return [];
-  const list = JSON.parse(raw) as Array<{ rp: string; label: string; name: string; url: string }>;
-  return list.map((t) => ({ rp: t.rp, label: t.label, name: t.name, enabled: () => true, url: () => t.url }));
-}
-
 export const APP_REGISTRY: ReadonlyArray<{
   rp: string;
   /** Short name in the admin console's App access list. */
@@ -88,7 +82,7 @@ export const APP_REGISTRY: ReadonlyArray<{
     url: () => ownUrl('/bridge/gms/start'),
   },
   // MOS (on Odoo) is registered, like its OIDC client in config.ts, only when MOS_ENABLED=true. Its tile opens MOS's own
-  // sign-in start, which sends the person straight back through this IdP.
+  // sign-in start, which sends the person straight back through this IdP; with no MOS_PORTAL_URL there is no tile.
   ...(process.env.MOS_ENABLED === 'true'
     ? [
         {
@@ -100,8 +94,8 @@ export const APP_REGISTRY: ReadonlyArray<{
         },
       ]
     : []),
-  // The product apps: PRODUCT_APPS_JSON is a JSON list of {rp, label, name, url} (written by the hosting tooling).
-  ...productTiles(),
+  // Other applications (oidc/product-clients.ts): PRODUCT_APPS_JSON is a JSON list of {rp, label, name, url}; absent or empty means none.
+  ...parseProductTiles(process.env.PRODUCT_APPS_JSON).map((t) => ({ rp: t.rp, label: t.label, name: t.name, enabled: () => true, url: () => t.url })),
 ];
 
 /** Full app catalog; filtered per-user by entitlement below. */

@@ -14,6 +14,7 @@ import { pool } from '../src/db/pool.js';
 import { IDP_CONFIG } from '../src/config.js';
 import { findLicense, highestVersionEver, insertEvent, insertLicense } from '../src/licenses/repository.js';
 import { validateLicenseInput } from '../src/licenses/validation.js';
+import { nextLicenseVersion } from '../src/licenses/version.js';
 
 const confirm = process.env.I_UNDERSTAND_THIS_CHANGES_MIRROR_LICENCES;
 const { rows: dbRows } = await pool.query<{ db: string }>('SELECT current_database() AS db');
@@ -75,7 +76,7 @@ async function restoreLicense(sys: 'sso' | Sys): Promise<void> {
     await client.query('BEGIN');
     const checked = validateLicenseInput(sys, { customer: 'Example', expiresAt: null, modes: ['sso'] }, await findLicense(sys, client, true));
     if (!checked.ok) throw new Error('validation');
-    const version = (await highestVersionEver(sys, client)) + 1;
+    const version = nextLicenseVersion(await highestVersionEver(sys, client), Date.now());
     const license = await insertLicense({ system: sys, ...checked.value, version, actor: 'mirror-test' }, client);
     await insertEvent({ system: sys, action: 'create', actor: 'mirror-test', version, before: null, after: license }, client);
     await client.query('COMMIT');

@@ -14,6 +14,7 @@ import { pool } from '../src/db/pool.js';
 import { LICENSE_SYSTEMS, isLicenseSystem, type LicenseSystem } from '../src/licenses/catalog.js';
 import { findLicense, highestVersionEver, insertEvent, insertLicense, updateLicense } from '../src/licenses/repository.js';
 import { validateLicenseInput } from '../src/licenses/validation.js';
+import { nextLicenseVersion } from '../src/licenses/version.js';
 
 const args = process.argv.slice(2);
 const arg = (name: string): string | undefined => {
@@ -49,7 +50,7 @@ for (const system of systems as LicenseSystem[]) {
       existing,
     );
     if (!checked.ok) throw new Error(checked.details.map((d) => `${d.field}: ${d.message}`).join('; '));
-    const version = Math.max(existing?.version ?? 0, await highestVersionEver(system, client)) + 1;
+    const version = nextLicenseVersion(Math.max(existing?.version ?? 0, await highestVersionEver(system, client)), Date.now());
     const write = { system, ...checked.value, version, actor: 'dev-issue' };
     const license = existing ? await updateLicense(write, client) : await insertLicense(write, client);
     await insertEvent({ system, action: existing ? 'update' : 'create', actor: 'dev-issue', version, before: existing, after: license }, client);

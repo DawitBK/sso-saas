@@ -4,5 +4,7 @@ dist/
 .env.development
 .env.production
 .env.production.local
+.env.production.before-prod-config-*
 .env.mirror
 *.log
+logs/

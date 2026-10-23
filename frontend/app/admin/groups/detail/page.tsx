@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { apiPath } from '@shared/apiPath';
+import { ownerFetch } from '@shared/owner/ownerClient';
 import { ErrorState, PageSkeleton } from '@shared/ui/States';
 import { useConfirm } from '@shared/ui/Confirm';
 import { groupName } from '../groupName';
@@ -119,7 +120,7 @@ function GroupDetailInner() {
   async function post(path: string, body: Record<string, unknown>) {
     setSaving(true);
     try {
-      const res = await fetch(apiPath(path), {
+      const res = await ownerFetch(path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...body, csrf: data?.csrf }),

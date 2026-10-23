@@ -12,7 +12,8 @@
 import { pool } from '../db/pool.js';
 import { logger } from '../logging/logger.js';
 
-export type NotificationKind = 'dms-logout' | 'gms-revoke';
+/** `app-logout:<client id>` is the notification to one registered application (MOS, a product app); see auth/logout-notify.ts. */
+export type NotificationKind = 'dms-logout' | 'gms-revoke' | `app-logout:${string}`;
 
 /** Delay before attempt 2, 3, 4 ... then every 4 hours. */
 export const RETRY_DELAYS_MS = [60_000, 120_000, 300_000, 900_000, 1_800_000, 3_600_000, 7_200_000, 14_400_000];
@@ -49,6 +50,8 @@ export interface NotificationHandlers {
   'dms-logout': (accountId: string) => Promise<boolean>;
   /** Resolves when GMS sessions for this email were revoked, throws when GMS could not be reached. */
   'gms-revoke': (email: string) => Promise<unknown>;
+  /** true when the application with this client id acknowledged. */
+  'app-logout': (clientId: string, accountId: string) => Promise<boolean>;
 }
 
 interface Row {
@@ -82,7 +85,10 @@ export async function processDueNotifications(handlers: NotificationHandlers, ba
       let ok = false;
       let failure = '';
       try {
-        ok = row.kind === 'dms-logout' ? await handlers['dms-logout'](row.account_id) : (await handlers['gms-revoke'](row.email), true);
+        const appClient = row.kind.startsWith('app-logout:') ? row.kind.slice('app-logout:'.length) : null;
+        ok = appClient !== null
+          ? await handlers['app-logout'](appClient, row.account_id)
+          : row.kind === 'dms-logout' ? await handlers['dms-logout'](row.account_id) : (await handlers['gms-revoke'](row.email), true);
         if (!ok) failure = 'not acknowledged';
       } catch (err) {
         failure = classOf(err);
