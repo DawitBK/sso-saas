@@ -64,7 +64,7 @@ const GMS_REFRESH_COOKIE_PATH = '/api/v1';
  * token's: it is non-httpOnly by design, carries no authority on its own, and is
  * worthless to a sibling system or an attacker without the access/refresh token
  * it accompanies. Closing it properly means giving GMS's API a path prefix, which
- * root CLAUDE.md explicitly protects as already-live routing.
+ * is deliberately left alone because that routing is already live.
  */
 const GMS_CSRF_COOKIE_PATH = '/';
 
@@ -231,8 +231,8 @@ export function startGateway(): http.Server {
 
   /**
    * Loopback-only, same as the main IdP app (IDP_CONFIG.host). Apache routes
-   * exactly one path here in production — `/gms/__sso` → 127.0.0.1:4200, per
-   * DEPLOYMENT-GUIDE.md:157 — so there has never been a reason for 4200 to be
+   * exactly one path here in production — `/gms/__sso` → 127.0.0.1:4200 — so
+   * there has never been a reason for 4200 to be
    * reachable from the LAN. It was, because this listen() passed no host.
    */
   return app.listen(port, IDP_CONFIG.host, () => {

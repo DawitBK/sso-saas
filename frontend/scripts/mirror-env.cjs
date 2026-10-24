@@ -18,7 +18,7 @@ function loadMirrorEnv() {
   if (!fs.existsSync(mirrorEnvPath)) {
     console.error(
       `[mirror] ${mirrorEnvPath} does not exist.\n` +
-        'This is the isolated local prod-mirror environment (see root CLAUDE.md) — ' +
+        'This is the isolated local prod-mirror environment — ' +
         'it is never `.env`/`.env.development` or `.env.production`.',
     );
     process.exit(1);

@@ -1,5 +1,5 @@
 /**
- * The verification dialog's first view, rendered on the server. Run with `npm run test:unit:dialog` (node:test through tsx, borrowed from SSO/backend,
+ * The verification dialog's first view, rendered on the server. Run with `npm run test:unit:dialog` (node:test through tsx, borrowed from backend,
  * because Playwright's own JSX transform turns components into test descriptors that React cannot render).
  */
 import test from 'node:test';

@@ -246,10 +246,10 @@ every enrolled user must re-enroll their authenticator from scratch.
 **Supervision.** SSO exits on any unhandled fatal error on purpose (an identity provider running from an unknown state is worse than one
 that restarts clean), so something has to bring it back. `deploy/supervise.cjs` does: it restarts the process whenever it exits (1 s, 2 s,
 4 s ... 30 s back-off, reset after a minute of health), and kills and restarts one that is up but no longer answering `/health` (four failed
-probes, 15 s apart, after a 60 s grace). One supervisor per name (a lock file with a heartbeat), so re-running `production-start.bat` cannot
+probes, 15 s apart, after a 60 s grace). One supervisor per name (a lock file with a heartbeat), so starting it again cannot
 start a second copy. Start: `npm run start:prod:supervised` (backend) and `npm run start:supervised` (frontend); the mirror uses
 `start:mirror:supervised`. Stop: `npm run stop:supervised` in each folder (killing only the node child just makes it come back). Its log
-and state are `logs/supervisor-<name>.log` and `.json` (restarts, last exit). `production-start.bat` and `start-mirror-all.ps1` already use it.
+and state are `logs/supervisor-<name>.log` and `.json` (restarts, last exit). A server's start scripts should call these npm scripts.
 `npm run test:supervisor` proves it against real child processes.
 
 **Health.** `/health` is liveness. `/health/ready` (and `/api/v1/health/ready`) answers 503 only when the database or the active signing key is
@@ -264,7 +264,7 @@ tile. Every change is validated, audited with the old and new value, and can be 
 values it had (or the defaults) and signs people in regardless.
 
 **Applications.** Admin > Applications (platform administrator for changes). Edits to a client's addresses, switching it off, and rotating its
-secret take effect on the next request. After rotating the DMS client's secret put the new value in `DMS/backend/.env.production`
+secret take effect on the next request. After rotating the DMS client's secret put the new value in DMS's `.env.production`
 (`OIDC_CLIENT_SECRET`) and restart DMS; GMS needs nothing (the bridge inside SSO reads the database). The `portal` client is protected.
 
 **Two-factor recovery codes.** Ten single-use codes shown once when two-factor is switched on, replaceable with a current authenticator
@@ -305,7 +305,7 @@ What to do when it is red: open Admin > Audit log > Verify integrity, read each 
   hand repair) the **platform administrator** acknowledges it with a reason of at least 20 characters. The problem stays listed, marked acknowledged; the acknowledgement becomes an entry in
   the chain; if that entry is altered again it is a new open problem. Nobody else can acknowledge.
 - *The end deleted or the last entry edited / the whole log deleted* (`tail`, `empty`): recent entries are missing. This cannot be acknowledged. Restore the database from the last good backup
-  (`BACKUP-RESTORE-MANUAL-PROD.md`) and look for how it happened.
+  (section 6) and look for how it happened.
 `npm run audit:verify` prints the same list from a terminal. Dev only: `npm run db:ack:dev-audit` acknowledges the ten July 2026 entries in the dev database.
 
 **Metrics for Prometheus.** `GET /metrics?format=prometheus` on the backend's own port (7300; Apache does not route it). Set `METRICS_API_KEY` in `.env.production` and send it as
@@ -327,7 +327,7 @@ process (a restart takes seconds); a second process is for when that stops being
 
 ## 15. 2026-10-19: platform licensing
 
-Contract: `/docs/operations/PLATFORM-LICENSING.md` (canonical; this section is the SSO half). One licence per system (`sso`, `gms`, `dms`), kept in SSO's `licenses` table (migration 025), managed by the
+Contract: [PLATFORM-LICENSING.md](../operations/PLATFORM-LICENSING.md) (canonical; this section is the SSO half). One licence per system (`sso`, `gms`, `dms`), kept in SSO's `licenses` table (migration 025), managed by the
 **platform administrator only** at Admin > Licences (the same line as the signing keys: a console administrator sees the page explain that and nothing else). A system with **no licence row is not restricted at
 all**; migration 025 creates no rows, so deploying it changes nothing until someone saves a licence.
 
@@ -377,11 +377,11 @@ Until the owner has enrolled, while verification is required, those operations a
 
 ## 17. 2026-10-19: tamper detection and incident response
 
-**In one paragraph.** Two things watch for tampering. Inside SSO, an *incident response* notices refused owner-only operations, administrator-rights changes the owner did not make, and a broken audit log, and reacts by itself. Outside every application, a small *watcher* (`deploy/tamper/tamper.cjs`, plain Node, no installed packages) checks the files, the scheduled tasks, the backups and the health of the whole server every five minutes and still works when the applications are down or have been taken over. Both do the same four things: write a protected record, alert the owner, end the offending person's sessions, and put the platform in **read-only** mode. Neither one ever stops a service, deletes anything, or rotates or destroys a key. Developing on a PC is never locked unless someone switches it on.
+**In one paragraph.** Two things watch for tampering. Inside SSO, an *incident response* notices refused owner-only operations, administrator-rights changes the owner did not make, and a broken audit log, and reacts by itself. Outside every application, a small *watcher* (`tamper.cjs`, plain Node, no installed packages; the watcher is not included in this edition, so the watcher paragraphs below describe the contract SSO is built to work with) checks the files, the scheduled tasks, the backups and the health of the whole server every five minutes and still works when the applications are down or have been taken over. Both do the same four things: write a protected record, alert the owner, end the offending person's sessions, and put the platform in **read-only** mode. Neither one ever stops a service, deletes anything, or rotates or destroys a key. Developing on a PC is never locked unless someone switches it on.
 
-**What "read-only" means.** While the lock file exists (`INCIDENT_LOCK_FILE`, set by the release tooling to `<data folder>\incident.lock`), SSO, GMS and DMS answer every change (POST, PUT, PATCH, DELETE) with `403 INCIDENT_READ_ONLY`. Reading keeps working. Sign-in, sign-out, health, the licence routes and, in SSO, the owner's own verification sequence, the signing-key routes and the acknowledgement of a known audit-log break (`POST /api/v1/admin/audit/chain-acknowledgements`) keep working, so the owner can still prove who they are, rotate a key and explain an old break. It is the same allowlist the licence uses when it has expired. The lock is a file with `{at, reason, kind}` in it and nothing secret. It is checked about every three seconds.
+**What "read-only" means.** While the lock file exists (`INCIDENT_LOCK_FILE`, which a deployment points at `<data folder>\incident.lock`), SSO, GMS and DMS answer every change (POST, PUT, PATCH, DELETE) with `403 INCIDENT_READ_ONLY`. Reading keeps working. Sign-in, sign-out, health, the licence routes and, in SSO, the owner's own verification sequence, the signing-key routes and the acknowledgement of a known audit-log break (`POST /api/v1/admin/audit/chain-acknowledgements`) keep working, so the owner can still prove who they are, rotate a key and explain an old break. It is the same allowlist the licence uses when it has expired. The lock is a file with `{at, reason, kind}` in it and nothing secret. It is checked about every three seconds.
 
-**What SSO does by itself** (the table is `POLICY` in `SSO/backend/src/ops/incidents.ts`; `INCIDENT_RESPONSE=contain|alert|off`, default `contain` in production and the mirror, `alert` elsewhere):
+**What SSO does by itself** (the table is `POLICY` in `backend/src/ops/incidents.ts`; `INCIDENT_RESPONSE=contain|alert|off`, default `contain` in production and the mirror, `alert` elsewhere):
 
 | What happened | Response |
 |---|---|
@@ -394,7 +394,7 @@ Until the owner has enrolled, while verification is required, those operations a
 
 The owner's own session is never ended and the platform is never locked over the owner's own action. Every recorded incident is one row of `security_incidents` (migration 028): append-only (the database refuses changes) and hash-chained (an edited or removed row is found by verification), plus a `security.incident` line in the admin audit chain, an error line in the log marked `[idp:incident:ALERT]`, and one line in `incident-events.jsonl` next to the lock file for the watcher to e-mail. **Security incidents** in the console (owner only, read-only) lists them, shows the lock and whether the incident log verifies. It cannot lift a lock.
 
-**Clearing a lock: only from a terminal on the server.** `node ops\tamper\tamper.cjs clear` prints what it will do, asks you to type `CLEAR INCIDENT LOCK`, removes the lock, resets the list of open findings and leaves an audit line and an alert. If the cause still stands (a changed file, say) the next check locks again: deal with the cause, or run `baseline` to accept an intended change, then clear. Removing the file by hand is detected as "lock removed while an incident is open" and the lock is written again.
+**Clearing a lock: only from a terminal on the server.** The watcher's `tamper.cjs clear` command prints what it will do, asks you to type `CLEAR INCIDENT LOCK`, removes the lock, resets the list of open findings and leaves an audit line and an alert. If the cause still stands (a changed file, say) the next check locks again: deal with the cause, or run `baseline` to accept an intended change, then clear. Removing the file by hand is detected as "lock removed while an incident is open" and the lock is written again.
 
 **When the audit log is what locked it (2026-10-21).** "The audit log no longer verifies" locks at once, and an old, explained break (the mirror's two July 2026 entries, written with the v1 hash) is enough. The way out is in the console, **while locked**: Admin > Audit log, the platform administrator acknowledges each break (a real reason of 20 or more characters, kept forever) and completes the owner's verification for each one. That route is on the lock's allowlist (`INCIDENT_EXTRA_ALLOWLIST` in `ops/incidentGuard.ts`, an exact path) and nothing else is loosened: it is still the platform administrator's alone, still needs the owner's one-time authorisation (`audit.chain.acknowledge`) and the console's CSRF token, and it **never lifts the lock**. Before this fix the lock refused the acknowledgement, so the owner could not explain the break that had locked the platform (found on the mirror). What to expect, in order:
 1. `npm run audit:verify` (production: `node scripts/run-with-env.cjs production npx tsx src/db/verify-audit-chain.ts`) before the cutover lists every break read-only; write the sequence numbers down. On the first start SSO will lock if any is open.
@@ -405,9 +405,9 @@ Tests: `tests/incident-ack-while-locked.test.ts` (the whole sequence on a scratc
 
 **The watcher: setting it up (once, by the owner, at a terminal).**
 
-1. `node ops\tamper\tamper.cjs setup --root <checkout> --releases-dir <releases> --public-key <release public key> --expect-fingerprint <fingerprint>` asks for the SMTP host, port, user and password, the owner's mailbox and an optional webhook at **hidden** prompts and stores them **encrypted** (Windows DPAPI; `--scope machine` if the task will run as SYSTEM, `--no-email` for log only). Nothing is echoed or written in clear text.
-2. When the platform is in the state you intend: `tamper.cjs baseline`. It records a SHA-256 of `production-start.bat`, every script in `deploy\`, every file in the current release's `ops\`, every env file in the config folder (the hash only, never a value), where the `current` junction points, and what each expected scheduled task runs. The baseline is signed with a local key kept in its own protected file. Run `baseline` again after every release you apply or other intended change.
-3. `tamper.cjs test-alert`, then, **elevated**, `deploy\tamper\register-task.ps1 -ScriptPath ... -ConfigDir ... -DataDir ...` registers `ExampleCorp-Tamper-Watch` (at startup, then every five minutes). Nothing registers a task unless you run that script.
+1. `tamper.cjs setup --root <checkout> --releases-dir <releases> --public-key <release public key> --expect-fingerprint <fingerprint>` asks for the SMTP host, port, user and password, the owner's mailbox and an optional webhook at **hidden** prompts and stores them **encrypted** (Windows DPAPI; `--scope machine` if the task will run as SYSTEM, `--no-email` for log only). Nothing is echoed or written in clear text.
+2. When the platform is in the state you intend: `tamper.cjs baseline`. It records a SHA-256 of the start scripts, every script in the deploy folder, every file in the current release's operations folder, every env file in the config folder (the hash only, never a value), where the `current` junction points, and what each expected scheduled task runs. The baseline is signed with a local key kept in its own protected file. Run `baseline` again after every release you apply or other intended change.
+3. `tamper.cjs test-alert`, then, **elevated**, the watcher's task-registration script (`register-task.ps1 -ScriptPath ... -ConfigDir ... -DataDir ...`) registers `ExampleCorp-Tamper-Watch` (at startup, then every five minutes). Nothing registers a task unless you run that script.
 
 **What each pass checks:** the applied release against its signed manifest (the full hash of every file, every six hours); the protected files above; the scheduled tasks (present, enabled, action unchanged); the last backup (a warning past 36 hours); the health endpoints and the licence status; the watcher's own files and the baseline's signature; the incident lock; its own incident log. A critical finding writes the protected log (`<data>\tamper\incident-log.jsonl`, hash-chained, with a second copy of every hash in the config folder), writes the lock, and alerts through the Windows Event Log, e-mail and the webhook if set. A warning (stale backup, a service down, a release applied since the baseline) alerts but never locks. `tamper.cjs status` and `verify-log` show where things stand. Once a day the watcher takes an **anchor**: the head of the audit chain (a hash and a count, nothing else) is stored and e-mailed, and `tamper.cjs anchor verify` later proves the chain in the database was not rewritten. The anchor needs `OPS_WATCH_KEY_FILE` (the release tooling sets it) so SSO knows the watcher's key.
 
@@ -415,7 +415,7 @@ Tests: `tests/incident-ack-while-locked.test.ts` (the whole sequence on a scratc
 
 **What this cannot do.** Someone with administrator rights on the server can stop the watcher, remove its task, or rewrite both copies of its log; the e-mailed alerts and anchors are the copies they cannot reach, so keep them. A change made while the watcher is not running is found at the next pass, not as it happens (worst case five minutes). The SSO side sees what goes through SSO and its tables; it cannot see a change made to another system's database directly. The e-mail is only as reliable as the mail server; the log and the Event Log still record. If SSO itself is compromised it can lie to the anchor request, which is why the anchor history is kept elsewhere. Active Directory synchronisation is not an owner operation and is not covered.
 
-**Development and tests.** Nothing here runs on a development PC unless started on purpose; the lock needs `INCIDENT_LOCK_FILE`, and the default response outside production is `alert`. Tests: `npx jest tests/incident` in `SSO/backend` (the database part needs `INCIDENTS_TEST_DATABASE_URL` pointing at a scratch database with the migrations applied), `node --test deploy/tamper/tests`, and the incident gate tests in GMS and DMS.
+**Development and tests.** Nothing here runs on a development PC unless started on purpose; the lock needs `INCIDENT_LOCK_FILE`, and the default response outside production is `alert`. Tests: `npx jest tests/incident` in `backend` (the database part needs `INCIDENTS_TEST_DATABASE_URL` pointing at a scratch database with the migrations applied), and the incident gate tests in GMS and DMS.
 
 ## 18. 2026-10-22: other applications, sign-out parity, sign-out address
 

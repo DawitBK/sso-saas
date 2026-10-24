@@ -20,7 +20,7 @@ export const CLIENT_FACTS: Record<string, { pattern: string; rolesScope: string 
     pattern: 'OpenID Connect client. DMS signs people in itself: it exchanges the code with SSO and reads the person’s roles from the token.',
     rolesScope: 'edams_roles',
     critical: null,
-    secretNote: 'DMS keeps its own copy of this secret (OIDC_CLIENT_SECRET in DMS/backend/.env.production). After a rotation, put the new value there and restart DMS; until then signing in to DMS fails.',
+    secretNote: 'DMS keeps its own copy of this secret (OIDC_CLIENT_SECRET in the .env.production file of DMS). After a rotation, put the new value there and restart DMS; until then signing in to DMS fails.',
   },
   gms: {
     pattern: 'Token bridge. SSO signs GMS in through GMS’s own internal API and hands the browser over through the same-origin gateway.',

@@ -18,7 +18,7 @@
  *
  * Restart the SSO backend afterwards: oidc-provider reads the client list at boot.
  *
- * Usage (from SSO/backend; mirror/production MUST use the npm launchers or this targets DEV):
+ * Usage (from backend; mirror/production MUST use the npm launchers or this targets DEV):
  *   npm run client:uris                       # dev, dry run
  *   npm run client:uris -- --client=edams --apply
  *   npm run client:uris:mirror -- --apply     # needs I_UNDERSTAND_THIS_UPDATES=idpprod

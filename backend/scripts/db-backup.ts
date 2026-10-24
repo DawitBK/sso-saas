@@ -10,7 +10,7 @@
  *
  * Usage: npx tsx scripts/db-backup.ts [development|production]
  *
- * Restore gotcha (see /docs/operations/PLATFORM-OPERATIONS-GUIDE.md §1.2): session revocation
+ * Restore gotcha: session revocation
  * in SSO is row-deletion against live tables, not a separate log. Restoring
  * from a backup can silently resurrect a session that was revoked after the
  * backup was taken — cross-check idp_admin_audit for revocations in the gap
@@ -25,7 +25,7 @@ import { config as loadDotenv } from "dotenv";
 // This package is "type": "module", so `__dirname` does not exist here — the
 // script threw `ReferenceError: __dirname is not defined in ES module scope`
 // on line 1 of real work and had therefore never produced a single backup,
-// despite SERVER-DEPLOYMENT-TODO.md describing it as "a working backup
+// despite having been described as "a working backup
 // script" that merely needed scheduling. DMS's copy had the identical bug.
 // Scheduling it as a Windows task would have hidden this permanently: the
 // task reports "completed", the exit code is non-zero, and nobody looks

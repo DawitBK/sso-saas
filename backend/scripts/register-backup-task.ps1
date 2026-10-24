@@ -42,7 +42,7 @@ $trigger = New-ScheduledTaskTrigger -Daily -At $At
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
 
 Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings `
-  -Description "Nightly idpprod backup via scripts/db-backup.ts. See /docs/operations/PLATFORM-OPERATIONS-GUIDE.md Section 1.2." `
+  -Description "Nightly idpprod backup via scripts/db-backup.ts. See DEPLOY-WINDOWS-MANUAL.md section 7." `
   -RunLevel Highest
 
 Write-Host "Registered '$TaskName' (daily at $At). Verify with:"

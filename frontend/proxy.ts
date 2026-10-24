@@ -3,7 +3,7 @@ import { buildCsp, cspMode, newNonce, STATIC_SECURITY_HEADERS } from './shared/s
 
 /**
  * Canonical-host guard — the frontend-side half of the backend's own guard
- * in SSO/backend/src/main.ts (see its comment for the full "why": localhost
+ * in backend/src/main.ts (see its comment for the full "why": localhost
  * and 127.0.0.1 are permanently separate cookie-storage origins by browser
  * design, and a stray hit on the wrong host mid-flow is what actually
  * produces oidc-provider's "authorization request has expired" — not a real
@@ -28,11 +28,11 @@ import { buildCsp, cspMode, newNonce, STATIC_SECURITY_HEADERS } from './shared/s
  * `x-forwarded-host` is read in preference to `host` because it's the only
  * header guaranteed to carry the ORIGINAL browser Host through Apache in
  * every environment this runs in — checked against both real configs, not
- * assumed: the mirror vhost (apache/conf/extra/httpd-mirror.conf) does not
+ * assumed: the mirror vhost does not
  * set `ProxyPreserveHost`, so Apache's default (Off) sends this process
  * `Host: 127.0.0.1:9301` (the proxy target) and relies on mod_proxy's
  * automatic `X-Forwarded-Host` for the real one; the real production vhost
- * (apache/conf/extra/httpd-ssl.conf) sets `ProxyPreserveHost On` instead, so
+ * sets `ProxyPreserveHost On` instead, so
  * `Host` itself already carries `portal.examplecorp.com` and `X-Forwarded-Host`
  * agrees with it. Preferring `x-forwarded-host` is correct either way.
  */

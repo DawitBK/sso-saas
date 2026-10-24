@@ -34,15 +34,15 @@ const PASSWORD = process.env.GMS_E2E_PASSWORD ?? 'GMSAdmin@2026';
  * /dashboard/visits/:id, and always was.
  *
  * Guest accounts are seeded with NO password (GMS provisions them with an
- * unusable hash on purpose — see GMS/CLAUDE.md, "Bulk-imported accounts have no
- * default password"), so one has to be given a password in gmsdev before this
+ * unusable hash on purpose: bulk-imported accounts have no
+ * default password), so one has to be given a password in gmsdev before this
  * spec can run. That is deliberately not automated here: it is a dev-database
  * mutation and this file does not own the database.
  */
 const GUEST_EMAIL = process.env.GMS_E2E_GUEST_EMAIL ?? 'natnael.hailu19@guestmail.et';
 const GUEST_PASSWORD = process.env.GMS_E2E_GUEST_PASSWORD ?? 'GuestE2E@2026';
 
-/** zustand's persist key — see GMS/frontend/state/auth.store.ts. */
+/** zustand's persist key — see GMS's `auth.store.ts`. */
 const STORAGE_KEY = 'gms-auth-session';
 
 interface Session {

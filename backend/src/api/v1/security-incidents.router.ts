@@ -5,7 +5,7 @@
  *                                              incident chain verifies. The platform administrator only; anyone else is answered 404, as if it did not exist.
  *   GET /api/v1/ops/chain-head                 the audit-chain head for the out-of-process watcher's anchor; HMAC-authenticated (ops/chainHead.ts).
  *
- * Read-only on purpose. A lock is cleared and an incident is closed ONLY from a terminal on the server (deploy/tamper/tamper.cjs clear): nothing here, and
+ * Read-only on purpose. A lock is cleared and an incident is closed ONLY from a terminal on the server (the out-of-process tamper watcher's clear command): nothing here, and
  * nothing in the web console, can lift containment, because whoever caused the incident may be the one holding a web session.
  */
 import { Router, type NextFunction, type Request, type Response } from 'express';
@@ -35,7 +35,7 @@ export function securityIncidentsRouter(): Router {
         ...list,
         lock: lockStatus(),
         chain: { valid: chain.valid, checked: chain.checked, brokenAt: chain.brokenAt ?? null, problem: chain.problem ?? null },
-        clearing: 'A lock is cleared only from a terminal on the server: node deploy\tamper\tamper.cjs clear (see the operations guide). It cannot be cleared here.',
+        clearing: 'A lock is cleared only from a terminal on the server, with the tamper watcher clear command (see the operations guide). It cannot be cleared here.',
       });
     } catch (err) {
       next(err);

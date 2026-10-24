@@ -20,7 +20,7 @@ fully complete. Per the directive's own evidentiary standard (Section 11), a "Cl
 status must survive a fresh read of the actual code, not just a prior transcript's claim.
 Two entries did not survive that check and have been reopened below with the contradicting
 evidence, then genuinely fixed and re-closed the same day (see SSO-GAP-001 and SSO-GAP-004
-below). Separately: `CLAUDE.md` had, at one point, described these same two as still
+below). Separately: the project notes had, at one point, described these same two as still
 "reopened" — that description was itself stale by the time it was read in a later session
 and has since been corrected there too. The lesson generalizes in both directions: neither
 a "closed" nor a "reopened" note anywhere in this documentation set is trustworthy on its
@@ -36,13 +36,13 @@ own; only the cited file:line and command-output evidence is.
   models... frontend renders EJS views independently."
 - **Found false on 2026-07-25 audit** (see git history of this file for the
   contradicting evidence at the time: `main.ts` still set an EJS view engine,
-  ~15 live `res.render` calls in `admin/router.ts` etc. served real HTML directly from
+  ~15 live `res.render` calls in the old admin `router.ts` etc. served real HTML directly from
   `:7300`, `view-model.ts`'s own comment admitted a deliberate "during the migration"
   dual-mode fallback, and `package.json` still depended on `ejs`).
 - **Fixed 2026-07-25** (ADR-013): `view-model.ts`'s `viewModelMiddleware` no longer
   branches on any header — it always returns the JSON view model. `main.ts` no longer
   sets a view engine. `package.json` no longer depends on `ejs` or copies
-  `SSO/frontend/src/views` into its own build output.
+  `frontend-ejs-archive/src/views` into its own build output.
 - **Live verification evidence (2026-07-25):**
   - `curl http://localhost:7300/interaction/<uid>` (no `X-SSO-UI` header) →
     `Content-Type: application/vnd.sso.view+json`, JSON body — confirmed directly, not
@@ -52,13 +52,13 @@ own; only the cited file:line and command-output evidence is.
   - `node test-scripts/assert-view-model-split.mjs` → **PASS**.
   - `node test-scripts/live-login.mjs` → **PASS** (`admin@examplecorp.com`/`demo` reaches
     the portal end to end through the frontend).
-  - `cd SSO/backend && npm run typecheck && npm run build && npm test` → all green; a
+  - `cd backend && npm run typecheck && npm run build && npm test` → all green; a
     clean `rm -rf dist && npm run build` confirms no `dist/views` is produced.
   - `curl http://localhost:7300/session/end` still returns real HTML — confirms the
     one accepted exception (OIDC library's own `rpInitiatedLogout` page) was left
     intentionally untouched, not accidentally broken.
 - **Remaining, deliberately out of scope**: the dead `consent.ejs` view and the
-  near-duplicate `interactions/csrf.ts`/`admin/csrf.ts` files are real but minor
+  near-duplicate `interactions/csrf.ts` and (since removed) admin `csrf.ts` files are real but minor
   hygiene items, deferred to a later Section 9 cleanup pass rather than bundled into
   this structural fix. `SSO-OPERATIONS.md`'s production topology section is stale
   (describes the pre-split single-process setup) and needs a refresh; whatever reverse
@@ -93,7 +93,7 @@ own; only the cited file:line and command-output evidence is.
   - Backfill: `node scripts/backfill-sso-role-grants.ts` → 248 users migrated, 0
     failures, against the live `gmsdev` dev database.
   - Row-for-row check: `node scripts/verify-sso-role-grants.ts` → **248/248 match**.
-  - End-to-end precedence proof (`SSO/backend/test-scripts/assert-role-grant-precedence-live.mjs`):
+  - End-to-end precedence proof (`backend/test-scripts/assert-role-grant-precedence-live.mjs`):
     changed a real staff user's role via SSO's new API alone (`reception` →
     `super_reception`) without touching GMS, confirmed SSO resolved the new role,
     fed that into GMS's real internal session-mint endpoint, and confirmed the
@@ -102,7 +102,7 @@ own; only the cited file:line and command-output evidence is.
     the outcome. → **PASS**.
   - Fail-closed proof: pointed `SSO_API_BASE` at an unreachable port and confirmed
     `setSsoGrantedRoles` throws rather than silently succeeding → **PASS**.
-  - `GMS/backend`: full Jest suite (36 suites / 131 tests) → **all green** after
+  - the GMS backend: full Jest suite (36 suites / 131 tests) → **all green** after
     updating `user.service.test.ts`'s mocks for the new SSO write-through call (a
     real, expected test update, not a workaround).
   - Both GMS backend and SSO backend `tsc --noEmit` → clean.
@@ -121,13 +121,13 @@ own; only the cited file:line and command-output evidence is.
 ### SSO-GAP-002 — Direct cross-database SQL pool access from SSO to DMS and GMS
 
 - **Category:** Inter-service communication / data ownership (Directive §6.14).
-- **Live verification evidence:** `SSO/backend/src/admin/dms-internal-client.ts` and
-  `SSO/backend/src/admin/gms-internal-client.ts` both only construct `fetch()` calls
+- **Live verification evidence:** `backend/src/admin/dms-internal-client.ts` and
+  `backend/src/admin/gms-internal-client.ts` both only construct `fetch()` calls
   against `DMS_INTERNAL_BASE_URL`/`GMS_INTERNAL_BASE_URL` with an `x-internal-api-key`
-  header — grepping `SSO/backend/src` for `new Pool(` / `Client(` / a raw connection
+  header — grepping `backend/src` for `new Pool(` / `Client(` / a raw connection
   string targeting the DMS or GMS databases returns zero hits outside SSO's own
   `db/pool.ts` (SSO's own `idp` database). No dependency on `pg-pool`, `mysql`, or any
-  DMS/GMS-specific driver appears in `SSO/backend/package.json` beyond the single `pg`
+  DMS/GMS-specific driver appears in `backend/package.json` beyond the single `pg`
   entry used for SSO's own database.
 - **Severity:** Was High if true, Closed — no cross-database coupling exists.
 
@@ -135,12 +135,12 @@ own; only the cited file:line and command-output evidence is.
 
 - **Category:** Observability / logging (Directive §6.6, §7.3).
 - **Live verification evidence:**
-  - `SSO/backend/src/main.ts:71-81` — generates/reads `x-request-id` and
+  - `backend/src/main.ts:71-81` — generates/reads `x-request-id` and
     `x-correlation-id`, stores on `res.locals.requestId`, echoes it in every
     `/api/v1` response's `meta.requestId` (`api/v1/platform.router.ts:15-25`), and
     forwards it outbound to GMS (`bridge/gms.ts:61-62`, sets the header on the
     internal-session-mint request).
-  - `DMS/backend/src/shared/middleware.ts` and `GMS/backend/src/shared/middleware/*`
+  - DMS's `middleware.ts` and `GMS/backend/src/shared/middleware/*`
     independently confirmed (per this pass's DMS/GMS audits) to read/generate the same
     header pair and include it in their own error/success envelopes.
   - **Residual gap, not previously called out:** the ID is propagated on the one
@@ -157,7 +157,7 @@ own; only the cited file:line and command-output evidence is.
 
 ### PLATFORM-GAP-006 — DMS folder mutation routes bypass the shared response envelope — **CLOSED 2026-07-25**
 
-- **Location:** `DMS/backend/src/modules/folders/folders.routes.ts:54,85,89`
+- **Location:** DMS's `folders.routes.ts:54,85,89`
 - **Category:** API contract drift (Directive §6.2 / §6.5 shared response envelope)
 - **Severity:** Was Low-Medium, now Closed.
 - **Description (as found):** Every other route in this file wraps its payload as
@@ -169,9 +169,9 @@ own; only the cited file:line and command-output evidence is.
 - **Fixed 2026-07-25:** all three now wrap the same way as every other route in the
   file: `res.status(201).json({ data: await createFolder(...) })`, and the two others
   matching `{ data: await updateFolder(...) }` / `{ data: await deactivateFolder(...) }`.
-- **Regression check performed before fixing:** grepped `DMS/frontend` for every caller
-  of these three endpoints (`features/admin/crudPanels.tsx:970-1004`,
-  `features/hierarchy/HierarchyTreeBrowser.tsx:355,379`) — none of the three mutation
+- **Regression check performed before fixing:** grepped the DMS frontend for every caller
+  of these three endpoints (`crudPanels.tsx:970-1004`,
+  `HierarchyTreeBrowser.tsx:355,379`) — none of the three mutation
   call sites read the response body at all; each only triggers a query invalidation
   (`qc.invalidateQueries(...)`) on success. Wrapping the payload changes no consumer
   behavior.
@@ -187,16 +187,16 @@ own; only the cited file:line and command-output evidence is.
 - **Category:** Configuration drift (Directive §4 port table, §6.4 shared config)
 - **Severity:** Was Medium, now Closed.
 - **Fixed 2026-07-25:** every finding below corrected to the 71xx/72xx/73xx scheme
-  (`DMS/backend/.env`, `auth.routes.ts`'s 8 fallback literals, all 5 DMS test-scripts +
-  its README, `GMS/backend/.env.production`, `GMS/frontend/.env.production` +
+  (DMS's `.env`, `auth.routes.ts`'s 8 fallback literals, all 5 DMS test-scripts +
+  its README, GMS's `.env.production`, GMS's `.env.production` +
   `.env.example`, `GMS/frontend/.env.docker-build`, `visit-qr-link.service.ts`,
-  `GMS/frontend/shared/lib/qr-links.ts`). Also fixed two active CORS/CLIENT_URL entries
+  GMS's `qr-links.ts`). Also fixed two active CORS/CLIENT_URL entries
   found during the fix that weren't in the original finding list:
-  `GMS/backend/.env.test` (`CLIENT_URL`/`CORS_ALLOWED_ORIGINS`, both were `:3000`) and
-  `GMS/backend/.env.production`'s local-testing CORS entry (was `:5001`). Deliberately
+  GMS's `.env.test` (`CLIENT_URL`/`CORS_ALLOWED_ORIGINS`, both were `:3000`) and
+  GMS's `.env.production`'s local-testing CORS entry (was `:5001`). Deliberately
   left alone: purely commented-out historical reference blocks (e.g.
-  `GMS/backend/.env.development`'s "Production reference values (commented)" section)
-  and `GMS/backend/.env.example`'s `portal.examplecorp.com:5001` domain-with-port
+  GMS's `.env.development`'s "Production reference values (commented)" section)
+  and GMS's `.env.example`'s `portal.examplecorp.com:5001` domain-with-port
   example, since that looks like a distinct real deployment pattern (compare
   `.env.production`'s "OPTION A" using port `6772`, an unrelated NAT/port-forward
   number) rather than a stray dev-port leftover — changing it without understanding
@@ -206,20 +206,20 @@ own; only the cited file:line and command-output evidence is.
   (36 suites / 131 tests, still all green) since that file backs live test runs, not
   just static config.
 - **Findings (as originally recorded):**
-  - `DMS/backend/.env:53` — `DEV_JWT_ISSUER=http://localhost:4000`, inconsistent with
+  - DMS's `.env:53` — `DEV_JWT_ISSUER=http://localhost:4000`, inconsistent with
     `AUTH_ISSUER=http://localhost:7301` two lines above in the same file.
-  - `DMS/backend/src/modules/auth/auth.routes.ts` — 8 occurrences of the literal
+  - DMS's `auth.routes.ts` — 8 occurrences of the literal
     fallback `'http://localhost:4000'`.
   - `DMS/backend/test-scripts/*.ts` (5 files) — hardcode `http://localhost:4000/api/v1`.
-  - `GMS/backend/.env.production:1` — `PORT=5000` (never migrated).
-  - `GMS/frontend/.env.production:1`, `.env.example:1` — `PORT=5001`.
+  - GMS's `.env.production:1` — `PORT=5000` (never migrated).
+  - GMS's `.env.production:1`, `.env.example:1` — `PORT=5001`.
   - `GMS/frontend/.env.docker-build:6` — `NEXT_PUBLIC_APP_URL=http://localhost:3000`.
-  - `GMS/backend/src/shared/services/visit-qr-link.service.ts:15` and
-    `GMS/frontend/shared/lib/qr-links.ts:39` — hardcoded `http://127.0.0.1:3000`
+  - GMS's `visit-qr-link.service.ts:15` and
+    GMS's `qr-links.ts:39` — hardcoded `http://127.0.0.1:3000`
     fallback.
-- **Not a defect:** `SSO/backend/src/config.ts:164-165` and `gateway/server.ts:4`'s use
+- **Not a defect:** `backend/src/config.ts:164-165` and `gateway/server.ts:4`'s use
   of port `4200` is the pre-existing, intentional GMS same-origin gateway port
-  documented in the root `CLAUDE.md` — not a migration leftover. The directive's port
+  a documented, intentional allocation — not a migration leftover. The directive's port
   table doesn't list it because it's a fourth, already-existing allocation, not one of
   the three primary systems; it should be added to the canonical architecture doc as a
   named exception rather than treated as non-compliance.
@@ -230,27 +230,27 @@ own; only the cited file:line and command-output evidence is.
 
 ### PLATFORM-GAP-008 — SSO's own application routes are unversioned — **RESOLVED AS A DOCUMENTED EXCEPTION, not a code change (2026-07-25)**
 
-- **Location:** `SSO/backend/src/main.ts:133-136`
+- **Location:** `backend/src/main.ts:133-136`
 - **Category:** API versioning (Directive §5)
 - **Original framing:** `/portal`, `/admin`, `/interaction`, and `/bridge` are SSO's own
   routes (not OIDC-mandated) and remain unprefixed/unversioned, unlike
-  `SSO/backend/src/api/v1/platform.router.ts`'s `/api/v1/health`, `/health/ready`,
+  `backend/src/api/v1/platform.router.ts`'s `/api/v1/health`, `/health/ready`,
   `/metrics`.
 - **Decision on 2026-07-25: do not prefix these with `/api/v1`.** On inspection, these
   four routes are not resource/data APIs in the sense Directive §5 is targeting — they
-  are browser-navigated page routes (rendered as HTML by `SSO/frontend`, consumed as a
+  are browser-navigated page routes (rendered as HTML by `frontend`, consumed as a
   `{view, locals}` view model in between). Nobody versions page routes this way: DMS's
   and GMS's own Next.js frontends don't prefix `/login` or `/dashboard` with `/api/v1`
   either — only their JSON APIs get that treatment. Three concrete reasons this
   specific fix would make things worse, not better:
-  1. `SSO/backend/src/oidc/provider.ts`'s `interactions.url()` hardcodes
+  1. `backend/src/oidc/provider.ts`'s `interactions.url()` hardcodes
      `/interaction/:uid` as the redirect target `oidc-provider` itself generates for
      every in-flight login; changing the path requires coordinating a library
      reconfiguration, not a route mount change.
   2. The frontend has since moved off its original EJS+Express server (which is
      where `server.ts`'s `isUiPath` used to live) onto Next.js App Router; the
      equivalent proxy-vs-render decision is now the `rewrites().fallback` list in
-     `SSO/frontend/next.config.ts`, whose own comment traces the lineage back to
+     `frontend/next.config.ts`, whose own comment traces the lineage back to
      `isUiPath`. A prefix change still means updating both sides — that list and
      the backend route mount — in lockstep with zero room for a mid-deploy
      mismatch, since a stale frontend talking to a new backend (or vice versa) would
@@ -271,40 +271,40 @@ own; only the cited file:line and command-output evidence is.
 
 ### PLATFORM-GAP-009 — SSO backend has no structured logging — **CLOSED 2026-07-25**
 
-- **Location:** was 31 call sites across `SSO/backend/src/**` (grep for
+- **Location:** was 31 call sites across `backend/src/**` (grep for
   `console\.(log|error|warn)`); no `pino`/`winston`/`bunyan` dependency in
-  `SSO/backend/package.json`.
+  `backend/package.json`.
 - **Category:** Logging (Directive §6.6).
 - **Severity:** Was Medium (not a functional bug, but a genuine cross-system
   inconsistency: both other systems already standardized on this), now Closed.
 - **Description:** DMS (`pino ^9.14.0`, zero `console.*` calls in `src/`) and GMS
-  (`pino ^10.3.1`, `src/types/express.d.ts` types `req.log: Logger`, only 4 stray
+  (`pino ^10.3.1`, `express.d.ts` types `req.log: Logger`, only 4 stray
   `console.*` calls left) had already converged on structured JSON logging via pino.
   SSO was the outlier, still on plain `console.log`/`console.error`, which meant a
   platform-wide log aggregator could parse two-thirds of the platform's logs as JSON
   and would silently fail (or need a special case) on the third.
 - **Fixed 2026-07-25:** added `pino` (matching DMS's `^9.14.0` line) to
-  `SSO/backend/package.json`; added `SSO/backend/src/logging/logger.ts` exporting a
+  `backend/package.json`; added `backend/src/logging/logger.ts` exporting a
   configured root logger (same `pino-http`-style fields as GMS: `req.log` attached per
   request, correlation ID included on every line); replaced the 31 `console.*` call
   sites with the structured logger.
-- **Live verification evidence:** `cd SSO/backend && npm run typecheck && npm run
+- **Live verification evidence:** `cd backend && npm run typecheck && npm run
   build` clean; `npm test` green; manual run confirms log lines are single-line JSON
   with `level`, `time`, `msg`, and (on request-scoped lines) the correlation ID,
   matching the shape DMS/GMS already emit.
-- **Reproduction (before the fix):** `grep -rn "console\." SSO/backend/src` returned
+- **Reproduction (before the fix):** `grep -rn "console\." backend/src` returned
   31 hits; now returns 0 outside test fixtures.
 
 ### PLATFORM-GAP-010 — SSO's GMS role-grant API is unversioned, inconsistent with GMS's own internal-API convention — **CLOSED 2026-07-25**
 
-- **Location:** `SSO/backend/src/main.ts:137` (`app.use('/internal/gms', ...,
-  gmsRoleGrantsRouter())`); called from `GMS/backend/src/modules/auth/sso-roles-client.ts`.
+- **Location:** `backend/src/main.ts:137` (`app.use('/internal/gms', ...,
+  gmsRoleGrantsRouter())`); called from GMS's `sso-roles-client.ts`.
 - **Category:** API versioning (Directive §5).
 - **Severity:** Was Low-Medium, now Closed.
 - **Description:** Directive §5 requires "the versioning scheme must be identical
   across DMS, GMS, and SSO," including for inter-service calls. GMS mounts its own
   corresponding inbound integration surface at `/api/v1/internal/sso`
-  (`GMS/backend/src/api/v1/index.ts`), but SSO's outbound-facing counterpart for the
+  (GMS's API v1 `index.ts`), but SSO's outbound-facing counterpart for the
   same integration — the role-grant API GMS's `setSsoGrantedRoles` writes through to —
   lived at the unversioned `/internal/gms`. This is exactly the kind of
   same-capability, different-convention drift §5 exists to prevent, and it is a real
@@ -312,20 +312,20 @@ own; only the cited file:line and command-output evidence is.
   routes covered by the PLATFORM-GAP-008 exception), so the versioning requirement
   actually applies here.
 - **Fixed 2026-07-25:** `gmsRoleGrantsRouter()` is now additionally mounted at
-  `/api/v1/internal/gms` in `SSO/backend/src/main.ts`; `sso-roles-client.ts` in GMS was
+  `/api/v1/internal/gms` in `backend/src/main.ts`; `sso-roles-client.ts` in GMS was
   updated to call the versioned path. The old `/internal/gms` mount is left live,
   unchanged, as the Directive §5-sanctioned backward-compatible prior version during
   the migration window, since it costs nothing to keep and removes any risk of an
   unnoticed second caller breaking.
-- **Live verification evidence:** `cd SSO/backend && npm run typecheck` clean;
-  `cd GMS/backend && npx tsc --noEmit` clean; grepped both repos for every remaining
+- **Live verification evidence:** `cd backend && npm run typecheck` clean;
+  `npx tsc --noEmit` in the GMS backend clean; grepped both repos for every remaining
   reference to `/internal/gms` to confirm the only caller was the one updated.
 
 ### PLATFORM-GAP-011 — GMS's JWT verification accepted any algorithm the token header declared — **CLOSED 2026-07-25**
 
-- **Location:** `GMS/backend/src/shared/middleware/auth.middleware.ts:34` (per-request
-  auth), `GMS/backend/src/infrastructure/websocket/socket.ts:100` (socket upgrade),
-  `GMS/backend/src/modules/auth/auth.service.ts:572,633,647` (refresh/logout/session
+- **Location:** GMS's `auth.middleware.ts:34` (per-request
+  auth), GMS's `socket.ts:100` (socket upgrade),
+  GMS's `auth.service.ts:572,633,647` (refresh/logout/session
   verification of the refresh token).
 - **Category:** Security (Directive §6.9).
 - **Severity:** Was Medium (`jsonwebtoken`'s default behavior does not honor an
@@ -343,7 +343,7 @@ own; only the cited file:line and command-output evidence is.
   `GMS/backend/src` and none pass an `algorithm` option, meaning HS256 (the
   `jsonwebtoken` default for a string secret) is already the only algorithm ever
   produced — the allowlist changes no legitimate token's acceptance.
-- **Live verification evidence:** `cd GMS/backend && npx tsc --noEmit` clean; full
+- **Live verification evidence:** `npx tsc --noEmit` in the GMS backend clean; full
   Jest suite re-run, all green (no test relies on a non-HS256 token).
 - **Deliberately not added:** `issuer`/`audience` restriction — no call site's signing
   path sets an `iss`/`aud` claim today, so adding a verify-time restriction would
@@ -355,7 +355,7 @@ own; only the cited file:line and command-output evidence is.
 - **Fixed 2026-07-25:** the project owner explicitly authorized closing this
   gap (Section 8's "don't change live behavior" clause was waived for this pass
   since these systems have no live dependent users yet). `AuthService` in
-  `GMS/backend/src/modules/auth/auth.service.ts` gained a `resolveTokenRoles()`
+  GMS's `auth.service.ts` gained a `resolveTokenRoles()`
   helper, called from both `login()` and `verifyTwoFactor()` (the 2FA
   completion path had the identical gap and would otherwise have remained
   open) before token issuance: it calls SSO's existing `getSsoGrantedRoles()`
@@ -365,7 +365,7 @@ own; only the cited file:line and command-output evidence is.
   `issueSsoSession` already applies to bridged logins. If SSO has no grant
   (empty array) or is unreachable, falls back to the local table unchanged and
   logs a warning, so native login never hard-fails on an SSO outage.
-- **Live verification evidence:** `cd GMS/backend && npx tsc --noEmit` clean;
+- **Live verification evidence:** `npx tsc --noEmit` in the GMS backend clean;
   full Jest suite (37 suites / 137 tests) green, including the existing
   `auth.test.ts` login flow, which exercises the SSO-unreachable fallback path
   directly (no `SSO_API_BASE`/`SSO_ROLES_API_KEY` configured in the test env)
@@ -378,7 +378,7 @@ own; only the cited file:line and command-output evidence is.
 
 **OPEN, deliberately not fixed** (as originally recorded):
 
-- **Location:** `GMS/backend/src/modules/auth/auth.routes.ts:14` (`POST /login`,
+- **Location:** GMS's `auth.routes.ts:14` (`POST /login`,
   live, first-class, not a break-glass/deprecated path), backed by
   `auth.service.ts`'s local-login flow which mints the access token from GMS's own
   `roles`/`user_roles` tables — distinct from `issueSsoSession`, the SSO-bridged login
@@ -419,7 +419,7 @@ own; only the cited file:line and command-output evidence is.
 
 ### PLATFORM-GAP-013 — DMS retains local role/authorization tables as an explicit, intentional fallback, not yet retired — **OPEN, informational (not a defect)**
 
-- **Location:** `DMS/backend/src/modules/auth/auth.routes.ts:1216-1261`, code comment
+- **Location:** DMS's `auth.routes.ts:1216-1261`, code comment
   at lines 1218-1219: "Local tables are retained... until a later retirement step;
   they are not the authority for returning SSO users."
 - **Category:** Authentication & Authorization (Directive §6.3).
@@ -442,7 +442,7 @@ own; only the cited file:line and command-output evidence is.
 
 ### PLATFORM-GAP-014 — SSO backend had no security headers (no helmet) — **CLOSED 2026-07-25**
 
-- **Location:** `SSO/backend/src/main.ts` (previously only 3 manually-set headers
+- **Location:** `backend/src/main.ts` (previously only 3 manually-set headers
   at the top-level middleware).
 - **Category:** Security (Directive §6.9).
 - **Severity:** Was Medium, now Closed.
@@ -467,8 +467,8 @@ own; only the cited file:line and command-output evidence is.
 
 ### PLATFORM-GAP-015 — SSO backend had zero rate limiting anywhere — **CLOSED 2026-07-25**
 
-- **Location:** `SSO/backend/src/main.ts`; no `express-rate-limit` (or
-  equivalent) dependency existed in `SSO/backend/package.json` prior to this fix.
+- **Location:** `backend/src/main.ts`; no `express-rate-limit` (or
+  equivalent) dependency existed in `backend/package.json` prior to this fix.
 - **Category:** Security (Directive §7.5).
 - **Severity:** Was Medium-High for an identity provider specifically (§7.5
   calls out "particularly in front of SSO's token endpoints" by name) — now
@@ -499,14 +499,13 @@ own; only the cited file:line and command-output evidence is.
   one primary deployment mechanism: copy/`git pull` the repo onto a Windows server,
   `npm install`, `npm run build`, run migrations, `npm run start` in a console
   window — no Docker, no PM2, no PaaS. Each system has its own
-  `DEPLOY-WINDOWS-MANUAL.md` (`DMS/Documentations/`, `GMS/`, `SSO/` — SSO's was at
-  the repo root until 2026-09-06). DMS's
+  `DEPLOY-WINDOWS-MANUAL.md` (in its own edition). DMS's
   backend `package.json` gained a `"start": "node dist/src/main.js"` script it was
   previously missing (only had `"dev"`). GMS's `render.yaml` was removed entirely
   (separately closing the "GMS deploys to Render" half of this finding, not just
-  demoting it) — the reasoning is now in `GMS/CLAUDE.md`; it used to live in
-  `GMS/HANDOFF-NEXT-SESSION.md`, deleted 2026-09-06 as a stale session handoff.
-- **Live verification evidence:** `cd DMS/backend && npm run build && PORT=7150 npm
+  demoting it) — the reasoning is now in GMS's own project notes; it used to live in
+  a session handoff file, deleted 2026-09-06 as stale.
+- **Live verification evidence:** in the DMS backend, `npm run build && PORT=7150 npm
   run start` — booted a fresh process (confirmed via a different PID than the
   already-running dev instance on the default port) and `curl
   http://localhost:7150/api/v1/health` returned `{"status":"ok"}` before the test
@@ -530,26 +529,26 @@ own; only the cited file:line and command-output evidence is.
   way") is not met, and the premise Section 7.1 itself offers for why this might
   already be handled (an existing NSSM/self-hosted-runner standard) does not
   hold up against the actual repos. (Note: this claim lives in the directive
-  text, `Platform_Architecture_Standardization_Directive.md` §7.1, not in
-  `CLAUDE.md` — CLAUDE.md never asserted an NSSM standard and needed no
+  text, the platform standardization directive's §7.1, not in
+  the project notes, which never asserted an NSSM standard and needed no
   correction on this point.)
 - **Description:** Directive §7.1 says: "Where a DevOps foundation has already
   been established for this platform (process supervision through NSSM and
   CI/CD through GitHub Actions with a self-hosted runner), treat that as the
   standard deployment path." Grepping all three repos for `nssm` returns zero
   hits, and every GitHub Actions workflow in all three
-  (`DMS/.github/workflows/ci.yml`, `GMS/.github/workflows/phase2-validation.yml`,
+  (DMS's `ci.yml`, GMS's `phase2-validation.yml`,
   `.github/workflows/idp-ci.yml`) runs on `runs-on: ubuntu-latest` — a
   GitHub-hosted runner, not self-hosted. The three systems' actual deployment
   mechanisms, confirmed by reading their deploy configs directly, are three
   different things: DMS uses Docker Compose in one documented path
-  (`DMS/docker-compose.prod.yml`, with a `db-backup` sidecar) and bare `pm2`
+  (DMS's `docker-compose.prod.yml`, with a `db-backup` sidecar) and bare `pm2`
   process management in an alternate documented path
-  (`DMS/Documentations/DEPLOY-MANUAL.md` — deleted 2026-09-05, it described a
+  (DMS's `DEPLOY-MANUAL.md` — deleted 2026-09-05, it described a
   Linux/pm2 host that does not exist and contradicted the Windows runbook);
-  GMS deployed to Render.com, a managed PaaS (`GMS/render.yaml` — since removed
+  GMS deployed to Render.com, a managed PaaS (GMS's `render.yaml` — since removed
   entirely, see the 2026-07-25 entry above); SSO has only a standalone multi-stage `Dockerfile`
-  (`SSO/backend/Dockerfile`) with no compose/orchestration file and a
+  (`backend/Dockerfile`) with no compose/orchestration file and a
   reverse-proxy-topology description in `SSO-OPERATIONS.md` rather than a
   process-management story.
 - **Live verification evidence:** direct read of the four workflow YAMLs, the
@@ -582,7 +581,7 @@ own; only the cited file:line and command-output evidence is.
 - **Live verification evidence:** `npm test` → 5 suites / 32 tests, all green;
   `npm run build` and `npm run typecheck` both clean.
 - **What's still open (why this is partial, not full, closure):** SSO is still
-  nowhere near GMS's ~80 test files or DMS's ~26. The `admin/router.ts` (~30
+  nowhere near GMS's ~80 test files or DMS's ~26. The old admin `router.ts` (~30
   routes) and `portal/router.ts` (security self-service routes) request
   handlers have no dedicated test coverage yet, nor does the OIDC
   authorize/token/interaction flow end-to-end. Closing the gap to real parity
@@ -592,9 +591,9 @@ own; only the cited file:line and command-output evidence is.
 
 ### PLATFORM-GAP-018 — DMS and GMS use different pagination/filtering param conventions — **OPEN, not fixed**
 
-- **Location:** DMS e.g. `DMS/backend/src/modules/documents/documents.routes.ts`
+- **Location:** DMS e.g. DMS's `documents.routes.ts`
   (`skip`/`take`, offset-style); GMS e.g.
-  `GMS/backend/src/modules/visits/visit.controller.ts` and
+  GMS's `visit.controller.ts` and
   `operations.controller.ts` (`page`/`limit`, page-number style, with an
   internal GMS inconsistency of its own between `from`/`to` and
   `startDate`/`endDate` for date-range filters across different endpoints).
@@ -612,13 +611,13 @@ own; only the cited file:line and command-output evidence is.
   behavior... unless explicitly requested") and §0 ("prefer the smallest
   change... over a wholesale rewrite"), this needs a deliberate, scoped
   migration (a supported deprecation window, updated frontend query-building
-  code in both `DMS/frontend` and `GMS/frontend`, and a decision on which
+  code in both the DMS frontend and the GMS frontend, and a decision on which
   convention becomes the platform standard) rather than a silent rename.
 
 ### PLATFORM-GAP-019 — SSO has no API documentation of any kind — **CLOSED 2026-07-25**
 
-- **Fixed 2026-07-25:** `SSO/backend/src/api/v1/openapi.ts`, a hand-written
-  OpenAPI 3.0 spec matching GMS's own `src/api/swagger.ts` pattern (plain
+- **Fixed 2026-07-25:** `backend/src/api/v1/openapi.ts`, a hand-written
+  OpenAPI 3.0 spec matching GMS's own `swagger.ts` pattern (plain
   object literal, not swagger-jsdoc route-comment scanning) — documents the
   two machine-to-machine request classes SSO actually owns: platform
   health/metrics and the internal GMS role-grant API. Mounted via
@@ -692,7 +691,7 @@ own; only the cited file:line and command-output evidence is.
   SYSTEM_SERVICE_UNAVAILABLE` instead of silently treating the request as
   not-revoked.
 - **Live verification evidence:** new regression suite
-  `GMS/backend/src/tests/session-revocation.service.test.ts` (6 tests, all
+  GMS's `session-revocation.service.test.ts` (6 tests, all
   passing) mocks Redis availability and `appConfig.isProduction` independently
   and asserts all four quadrants: healthy Redis (correct revoked/not-revoked
   result), unreachable Redis + non-production (fails open, returns `false`),
@@ -703,7 +702,7 @@ own; only the cited file:line and command-output evidence is.
 
 **OPEN, not fixed** (as originally recorded):
 
-- **Location:** `GMS/backend/src/shared/services/session-revocation.service.ts`
+- **Location:** GMS's `session-revocation.service.ts`
   (the `revoked_user:<id>` cutoff-key check), called from
   `auth.middleware.ts:44-49`.
 - **Category:** Security / session consistency (Directive §7.10).
@@ -712,7 +711,7 @@ own; only the cited file:line and command-output evidence is.
   Redis outage, silently, with only a logged warning.
 - **Description:** GMS's revocation check swallows a Redis-unreachable error and
   proceeds as "not revoked" (fail-open). DMS's equivalent check
-  (`shared/auth.ts:339-401`) fails **closed** in production/staging and only
+  (`auth.ts:339-401`) fails **closed** in production/staging and only
   fails open in dev, a materially safer default for the same class of check.
 - **Why left open rather than fixed:** changing GMS's fail-open behavior to
   fail-closed is a real behavior change — during any Redis blip, it would newly
@@ -739,7 +738,7 @@ own; only the cited file:line and command-output evidence is.
   server: malformed email/roles now return a clean 400 with a field-level
   message instead of silently coercing; well-formed requests behave exactly as
   before. Existing test suite (6/6) still green.
-- **Not yet covered:** `admin/router.ts`'s ~30 other routes and
+- **Not yet covered:** the old admin `router.ts`'s ~30 other routes and
   `portal/router.ts`'s `security/*` self-service routes. These largely already
   coerce every field through `String(x ?? '')` before use, which prevents a
   crash on a malformed shape (unlike `gms-role-grants`, which passed raw values
@@ -752,8 +751,8 @@ own; only the cited file:line and command-output evidence is.
 
 **OPEN, not fixed** (as originally recorded):
 
-- **Location:** `SSO/backend/package.json` lists `zod ^3.23.8`; repo-wide grep of
-  `SSO/backend/src` for `from 'zod'` / `from "zod"` / `require('zod')` returns
+- **Location:** `backend/package.json` lists `zod ^3.23.8`; repo-wide grep of
+  `backend/src` for `from 'zod'` / `from "zod"` / `require('zod')` returns
   zero hits. `src/interactions/router.ts:133,139` (representative example) reads
   body fields via ad hoc `String(req.body?.email ?? '')` coercion with no schema.
 - **Category:** Validation (Directive §6.8); Codebase cleanup (Directive §9,

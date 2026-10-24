@@ -63,7 +63,7 @@ idp/
 
 ## 4. Data Model
 
-**Ported from** `backend/src/infrastructure/database/models/index.ts`:
+**Ported from** DMS's database models index (`index.ts`):
 - `User` (id, email, `passwordHash`, firstName, lastName, isActive, `isMfaEnabled`, `mfaSecret`, `mfaTempSecret`, `mustChangePassword`, `failedLoginCount`, `lockedUntil`, `externalSub`, timestamps).
 - `Tenant` (slug id, name, isActive, quotas — quotas optional in IdP).
 - `UserTenant` (userId, tenantId; unique per pair).
@@ -100,13 +100,13 @@ EDAMS's `POST /auth/callback` maps `roles`/`groups` → its 40 permissions via t
 ## 6. Key Management
 
 - RSA 2048 keypair; JWKS exposed at `/jwks.json` with `kid`.
-- Dev keys via env (reuse `scripts/generate-rsa-keys.js`).
+- Dev keys via env (reuse DMS's `generate-rsa-keys.js`).
 - Prod keys injected via mounted secret / KMS — never committed.
 - Rotation: publish new key in JWKS, sign with new `kid`, retire old key after propagation TTL; consumers auto-refresh JWKS (EDAMS caches with ~1h TTL and rotates on unknown `kid`).
 
 ## 7. Interactions (custom UI)
 
-`oidc-provider` delegates to interaction endpoints. Ported from `backend/src/modules/auth/auth.routes.ts`:
+`oidc-provider` delegates to interaction endpoints. Ported from DMS's `auth.routes.ts`:
 1. **Login** — email+password verify, `failedLoginCount`/`lockedUntil` lockout, `mustChangePassword`.
 2. **MFA/TOTP** — setup/confirm/validate/disable.
 3. **Select-tenant** — `user_tenants` lookup; multi-tenant prompt, single-tenant auto; selected tenant bound to the grant so the token is tenant-scoped.
@@ -127,9 +127,9 @@ Tenant is selected **during the IdP interaction**, so the issued token is alread
 
 ## 10. Integration with EDAMS (Relying Party)
 
-- **Config** (`backend/src/config/env.ts` + `.env`): `AUTH_ISSUER=https://idp.<domain>/`, `AUTH_JWKS_URI=<issuer>/jwks.json`, `AUTH_AUDIENCE`, `OIDC_CLIENT_ID/SECRET`, `OIDC_REDIRECT_URI`, `OIDC_SCOPES`; `LOCAL_JWT_MOCK=false`.
+- **Config** (DMS's `env.ts` + `.env`): `AUTH_ISSUER=https://idp.<domain>/`, `AUTH_JWKS_URI=<issuer>/jwks.json`, `AUTH_AUDIENCE`, `OIDC_CLIENT_ID/SECRET`, `OIDC_REDIRECT_URI`, `OIDC_SCOPES`; `LOCAL_JWT_MOCK=false`.
 - **Callback** (`POST /auth/callback`): map `roles`/`groups` → permissions via `idp_role_mappings`; JIT-provision local user by email. `resolveACL()` / `requirePermission()` unchanged.
-- **Frontend**: replace dev email-only login (`frontend/app/(auth)/login/page.tsx`) with a redirect to EDAMS's existing `GET /auth/oidc/authorize`. `apiClient.ts` silent-refresh and `AuthGuard` largely unchanged; `select-tenant`/`TenantSwitcher` adjusted per §9.
+- **Frontend**: replace dev email-only login (DMS's login `page.tsx`) with a redirect to EDAMS's existing `GET /auth/oidc/authorize`. `apiClient.ts` silent-refresh and `AuthGuard` largely unchanged; `select-tenant`/`TenantSwitcher` adjusted per §9.
 
 ## 11. Deployment Topology
 

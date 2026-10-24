@@ -15,7 +15,7 @@
  *  - entitlement to DMS and GMS, and GMS's org-wide super_admin role.
  * DMS's own PLATFORM_ADMIN role is NOT written from here any more: SSO can no
  * longer grant it (no console and no internal API can). It is granted by the DMS
- * side's own vault-protected script, DMS/backend/scripts/seed-platform-admin.ts,
+ * side's own vault-protected script, DMS's `seed-platform-admin.ts`,
  * which you run next with the same email and pepper.
  *
  * Identity at rest. With PLATFORM_ADMIN_PEPPER set (in the env file this backend
@@ -27,7 +27,7 @@
  *
  * The email comes from PLATFORM_ADMIN_EMAIL (not a secret) or is asked for.
  *
- * Usage (from SSO/backend). Mirror / production MUST go through run-with-env.cjs or
+ * Usage (from backend). Mirror / production MUST go through run-with-env.cjs or
  * this silently targets the DEV database:
  *   Dev:    npx tsx scripts/seed-platform-admin.ts
  *   Mirror: node scripts/run-with-env.cjs mirror npx tsx scripts/seed-platform-admin.ts
@@ -143,7 +143,7 @@ async function main(): Promise<void> {
     await client.query('COMMIT');
     console.log('\n  Done. The platform administrator account exists in this SSO database.');
     console.log(`  Stored as: ${pepper ? 'a keyed pseudonym (you sign in with your real email)' : 'your real email'}.`);
-    console.log('  Next: run DMS/backend/scripts/seed-platform-admin.ts with the same email and pepper to give it its DMS role.\n');
+    console.log('  Next: run the DMS script seed-platform-admin.ts with the same email and pepper to give it its DMS role.\n');
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     throw err;

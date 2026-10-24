@@ -1,5 +1,5 @@
 /**
- * Mirror of DMS's own `DMS/backend/src/config/permissions.ts` — copied
+ * Mirror of DMS's own `permissions.ts` — copied
  * verbatim as plain data (no cross-repo import: these are two independently
  * deployable services, and this repo has no build-time visibility into DMS's
  * source tree). This is reference data ONLY, for labeling/grouping/defaulting

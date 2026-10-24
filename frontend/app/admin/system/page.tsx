@@ -120,7 +120,7 @@ export default function SystemPage() {
         <div className="admin-card admin-alert-card" role="alert">
           <p className="alert-title">⚠ This process is not supervised</p>
           <p className="alert-row">
-            If it crashes, nothing restarts it and nobody can sign in until someone starts it by hand. Start it with <code className="admin-code">npm run start:prod:supervised</code> (or <code className="admin-code">start:mirror:supervised</code>); production-start.bat already does.
+            If it crashes, nothing restarts it and nobody can sign in until someone starts it by hand. Start it with <code className="admin-code">npm run start:prod:supervised</code> (or <code className="admin-code">start:mirror:supervised</code>); a server start script can do the same.
           </p>
         </div>
       ) : null}

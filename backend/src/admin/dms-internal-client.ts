@@ -41,7 +41,7 @@ export interface DmsRoleMapping {
   // idp_role_mappings used to cap this at one role per group, which meant an
   // account legitimately holding two DMS roles could only ever have one of
   // them reasserted by its next SSO login (see the migration this followed,
-  // DMS/backend/migrations/20260923000002-idp-role-mappings-multi-role.sql).
+  // DMS's `20260923000002-idp-role-mappings-multi-role.sql`).
   roleNames: string[];
 }
 
@@ -78,8 +78,8 @@ export class DmsInternalApiError extends Error {
   }
 }
 
-// Shared factory (infrastructure/internalApiClient.ts) — see Finding 6/10 in
-// /docs/audits/PHASE-02-10-14-CODE-REVIEW-FINDINGS.md. Timeout rationale (kept verbatim,
+// Shared factory (infrastructure/internalApiClient.ts) — see Finding 6/10 of the
+// PHASE-02-10-14 code review. Timeout rationale (kept verbatim,
 // still load-bearing): one caller of this module — resolveEdamsRolesForGroups,
 // via auth/client-role-claims.ts — runs inside `findAccount`, which
 // oidc-provider invokes on EVERY token issuance, refresh, and /userinfo call,

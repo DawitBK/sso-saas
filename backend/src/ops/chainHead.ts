@@ -1,5 +1,5 @@
 /**
- * The audit-chain head, for the out-of-process tamper watcher's anchor (deploy/tamper/tamper.cjs `anchor`).
+ * The audit-chain head, for the out-of-process tamper watcher's anchor (its `anchor` command).
  *
  * The watcher records "at sequence S the chain's hash was H" somewhere SSO's database cannot reach (a mailbox, a second file). If someone later rewrites
  * the whole chain in the database, row S no longer has hash H and `anchor verify` says so. Only a hash, a sequence and counts leave SSO here: no row content.

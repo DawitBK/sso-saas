@@ -30,8 +30,8 @@ const ACCOUNTS = [
   },
   {
     // A second, distinct top-level account — mirrors the one manually seeded
-    // directly on the live server during the 2026-08-02 infra audit
-    // (SERVER-INFRASTRUCTURE-AUDIT.md §8), now made a permanent part of the
+    // directly on the live server during the 2026-08-02 infra audit,
+    // now made a permanent part of the
     // seed instead of a one-off live-box insert.
     email: process.env.SEED_MASTER_EMAIL ?? 'master@examplecorp.com',
     password: process.env.SEED_MASTER_PASSWORD ?? 'MasterTest#2026!',

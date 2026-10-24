@@ -74,9 +74,9 @@ services:
       start_period: 20s
 
 # Run standalone with: docker compose --env-file backend/.env.production up -d --build
-# For the full platform (GMS + DMS + SSO behind one nginx reverse proxy), see
-# /docker-compose.platform.yml at the repo root instead — it builds this same
-# backend/frontend and wires DATABASE_URL / cross-app URLs to container names.
+# This file runs SSO on its own. Running SSO together with GMS and DMS behind one
+# reverse proxy needs a compose file that spans the three systems; that file is
+# not part of this repository.
 
 volumes:
   sso_pgdata:

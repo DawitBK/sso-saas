@@ -2,8 +2,8 @@
 //
 // WHY IT EXISTS. SSO is the front door to every system, and it is deliberately written to EXIT on an unhandled rejection or
 // uncaught exception (backend/src/main.ts: an identity provider running from an unknown internal state is worse than one that
-// restarts clean). On the live server production-start.bat starts it with a bare `start cmd /k`, so nothing brought it back, and
-// deploy/uptime-monitor.ps1 only alerts. Until this existed, one bug meant nobody could sign in to anything until someone
+// restarts clean). On the live server a start script launches it with a bare `start cmd /k`, so nothing brought it back, and
+// an uptime monitor only alerts. Until this existed, one bug meant nobody could sign in to anything until someone
 // remembered to look.
 //
 // WHAT IT DOES
@@ -11,7 +11,7 @@
 //     stays up for a minute (a crash loop is slowed down, a one-off crash costs one second);
 //   - optional watchdog (--health): probes a LIVENESS URL and kills and restarts a process that is up but hung. Liveness only, on
 //     purpose: a database outage must not make the supervisor restart-loop a backend that is correctly waiting for it;
-//   - one supervisor per --name (a lock file with a heartbeat), so re-running production-start.bat cannot start a second copy that
+//   - one supervisor per --name (a lock file with a heartbeat), so re-running the start script cannot start a second copy that
 //     fights the first for the port;
 //   - a log (logs/supervisor-<name>.log, rotated at 5 MB) and a state file (logs/supervisor-<name>.json: restarts, last exit);
 //   - `--stop <name>` ends the supervisor AND its child. Killing only the child just makes it come back, which is the point.

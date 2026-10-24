@@ -16,16 +16,16 @@ This directory is the **browser entry point** for SSO on port **7301**.
 Start the backend first, then the frontend:
 
 ```bash
-cd SSO/backend
+cd backend
 npm run dev          # http://localhost:7300 (API/OIDC runtime)
 
-cd SSO/frontend
+cd frontend-ejs-archive
 npm install
 npm run dev          # http://localhost:7301 (browser UI + proxy)
 ```
 
 Set `IDP_ISSUER=http://localhost:7301` and `IDP_INTERNAL_URL=http://localhost:7300`
-in `SSO/backend/.env` so OIDC discovery, redirects, and token `iss` claims match
+in `backend/.env` so OIDC discovery, redirects, and token `iss` claims match
 the browser-facing URL while server-side token/JWKS calls stay on the backend port.
 
 ## Verification
@@ -33,7 +33,7 @@ the browser-facing URL while server-side token/JWKS calls stay on the backend po
 With both processes running:
 
 ```bash
-cd SSO/backend
+cd backend
 node test-scripts/live-login.mjs
 node test-scripts/assert-view-model-split.mjs
 node test-scripts/admin-internal-clickthrough.mjs

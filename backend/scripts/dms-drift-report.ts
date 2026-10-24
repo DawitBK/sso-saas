@@ -17,7 +17,7 @@
  *                                     wins (SSO cannot re-activate a DMS account).
  * Exit code: 0 clean, 1 disagreements found, 2 DMS could not be queried.
  *
- * Usage (from SSO/backend). Mirror / production MUST go through run-with-env.cjs or this
+ * Usage (from backend). Mirror / production MUST go through run-with-env.cjs or this
  * silently targets the DEV database:
  *   Dev:  npx tsx scripts/dms-drift-report.ts
  *   Prod: node scripts/run-with-env.cjs production tsx scripts/dms-drift-report.ts

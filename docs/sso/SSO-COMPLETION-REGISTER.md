@@ -37,14 +37,14 @@ change history, a temporary-password generator that follows the real minimum, an
 invisibility is **intentionally one-way**: no "show platform administrator" switch exists or should. Nonce-based Content-Security-Policy (`SSO_CSP=report-only|off` break-glass), frame, sniffing,
 referrer and permissions headers; double-submit CSRF tokens reused while the cookie lives; log redaction.
 
-**Delivery.** `production-start.bat` and `start-mirror-all.ps1` start SSO supervised; CI uses the dated-exception audit gate; runbook in `SERVER-DEPLOYMENT-TODO.md` section 13 and
+**Delivery.** The server start scripts run SSO supervised (`deploy/supervise.cjs`); CI uses the dated-exception audit gate; runbook in
 `SSO-OPERATIONS.md` sections 13 and 14.
 
 ## 3. Part 2 (the open items from part 1, worked through)
 
 | Part 1 open item | What was done |
 |---|---|
-| Legacy server-rendered `/admin` console still mounted (SSO-P2-5) | **Retired.** Routes, `requireAdminConsole`, `admin/csrf.ts` and the frontend's `/admin/*` rewrite are deleted. `admin/router.ts` was split: what the JSON API and the seed scripts share is `admin/access.ts` (977 lines kept, about 1,600 removed). Nothing in the console called the old routes (every page uses `/api/v1/admin/*`, checked page by page). |
+| Legacy server-rendered `/admin` console still mounted (SSO-P2-5) | **Retired.** Routes, `requireAdminConsole`, the admin `csrf.ts` and the frontend's `/admin/*` rewrite are deleted. The old admin `router.ts` was split: what the JSON API and the seed scripts share is `admin/access.ts` (977 lines kept, about 1,600 removed). Nothing in the console called the old routes (every page uses `/api/v1/admin/*`, checked page by page). |
 | Audit chain has no "acknowledge break" | **Built.** The verifier now reports every break and carries on past one (it used to stop at the first). `hash`, `linkage`, `ordering` and `head` breaks can be acknowledged by the **platform administrator only**, with a reason of at least 20 characters. The acknowledgement is pinned to the row's stored hashes **and** a content fingerprint (so a row edited again is a new break, which DMS's version does not guarantee), is itself appended to the chain in the same transaction, and never hides the break. `tail` and `empty` breaks (recent entries missing) cannot be acknowledged. A job verifies every six hours; an unexplained break turns the System page and `/health/ready` to degraded (200), sets `sso_audit_chain_valid 0` and logs an alert. Migration 021. 12 chain tests against the real writer, 10 HTTP tests for who may do what. |
 | No Prometheus endpoint | **Built.** `GET /metrics?format=prometheus` (or a scraper's Accept header; JSON stays the default). 36 metric families covering readiness, jobs, password-check load, notifications, peers, breakers, pool, audit chain, supervision and request counts/latency by a fixed set of areas (bounded labels). Same access rule as before (administrator, `x-metrics-key`, or the public flag). |
 | No forgot-password flow | **Built within the no-SMTP limit.** "Forgot your password?" on the sign-in page sends a request to the administrators (Admin > Users lists who is waiting and what they wrote); the reset itself is the existing administrator reset, which closes the request. The public answer never depends on whether the account exists; only active local accounts get a request; Active Directory accounts and the platform administrator never do; rate limited (5 per 15 minutes per address); can be switched off in Settings. Migration 022. |
@@ -59,7 +59,7 @@ referrer and permissions headers; double-submit CSRF tokens reused while the coo
 - A retired signing key stayed published by a running process until it restarted, because only a rotation reloaded the keystore (fixed by the 30-second refresh above).
 - The dev database has ten audit entries from July 2026 that no longer recompute under the current dev secret. Before, that read as one "CHAIN BROKEN" and hid whether anything else was wrong; now every
   break is listed and the ten are acknowledged by `npm run db:ack:dev-audit` (dev only, refuses on production and the mirror). The mirror's chain is clean.
-- The Next dev server kept an old server-side module after a change until restarted (the new branding flag was silently dropped). Noted in `SSO/CLAUDE.md` so the next person restarts before debugging.
+- The Next dev server kept an old server-side module after a change until restarted (the new branding flag was silently dropped). Restart the dev server before debugging a flag that seems to be ignored.
 - A page whose first load fires several requests at once can hold a CSRF token the cookie no longer matches; the new Users card fetches a fresh token before it posts.
 
 ## 4. Earlier findings fixed during verification (part 1)
@@ -78,7 +78,7 @@ server-computed `isLocked`); hydration races in the e2e login (a `data-hydrated`
 | Password reset needs a human | By design | No SMTP. The request reaches the administrators; they reset and tell the person. If SMTP is ever added, the link flow can replace the human step without changing the request table. |
 | More than one SSO process | Safe, not the plan | Rate limits need `REDIS_URL` to be shared; the password gate, circuit breaker and peer probes are per process (section 14 of the operations manual). |
 | Audit-chain `tail`/`empty` breaks | Cannot be acknowledged, by design | They mean recent entries are missing; the answer is a restore. |
-| Live server | **Not deployed** | The owner applies `SERVER-DEPLOYMENT-TODO.md` section 13 (six migrations, 017 to 022), including the outage test. `LOCAL_JWT_MOCK` in the live DMS `.env.production` is still unread (see root `CLAUDE.md`). |
+| Live server | **Not deployed** | The owner applies the six migrations (017 to 022), including the outage test. `LOCAL_JWT_MOCK` in the live DMS `.env.production` is still unread. |
 
 ## 6. Owner decisions that remain
 
@@ -88,5 +88,5 @@ Prometheus at SSO.
 
 ## 7. Where to look
 
-`SSO-OPERATIONS.md` sections 13 and 14 (running it), `SERVER-DEPLOYMENT-TODO.md` section 13 (deploying it), `SSO/CLAUDE.md` "Added 2026-10-11" (two parts: things that bite),
+`SSO-OPERATIONS.md` sections 13 and 14 (running it),
 `backend/docs/TEST_STATUS.md` (generated test list), `backend/docs/API.md` (JSON API, including the new endpoints), `backend/src/admin/audit.ts` (the chain and the acknowledgement).

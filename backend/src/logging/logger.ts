@@ -32,7 +32,7 @@ const loggerOptions: pino.LoggerOptions = {
 };
 
 // Production runs as a bare `node dist/main.js` in a console window (no
-// Docker, no PM2 — see SERVER-INFRASTRUCTURE-AUDIT.md), so stdout with no
+// Docker, no PM2), so stdout with no
 // configured destination means these logs only ever existed in that
 // window's scrollback and were lost the moment it closed — the identity
 // provider for the whole platform was logging to nowhere durable. Mirrors

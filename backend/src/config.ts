@@ -19,8 +19,8 @@ import { parseProductClients } from "./oidc/product-clients.js";
 
 // ---------------------------------------------------------------------------
 // ENV FILE LOADING CONTRACT — kept identical between SSO and DMS (each's own
-// config.ts/env.ts). GMS is a deliberate exception (see its own CLAUDE.md:
-// "GMS is the reference implementation for env loading — don't change it") —
+// config.ts/env.ts). GMS is a deliberate exception (it is the reference implementation for env
+// loading on this platform and is not to be changed) —
 // it achieves the same practical isolation through its own native
 // `['.env', '.env.<nodeEnv>']` layering instead of this file's explicit
 // per-mode branches, so don't expect byte-identical code there.
@@ -69,7 +69,7 @@ if (externalNodeEnv === "production") {
         "Production configuration is read from .env.production ONLY — `.env` is the development " +
         "file and is deliberately not read in production.\n" +
         ".env.production is gitignored (it holds real secrets) so it is never part of a clone or a " +
-        "file copy: it has to be placed on this machine by hand. See MANUAL-TRANSFER-TO-SERVER.md.",
+        "file copy: it has to be placed on this machine by hand.",
     );
   }
   // override:true so this file wins over any inherited shell/global var
@@ -113,8 +113,8 @@ if (externalNodeEnv === "production") {
  * loaded file, so a stray/machine-wide DATABASE_URL from the shell environment
  * still wins silently if that line is ever missing, blank, or commented out (a
  * fresh checkout, a bad merge, someone debugging). This exact footgun has
- * already bitten this platform more than once (see root CLAUDE.md "Known
- * footguns" — MRS needed two separate fixes for it). Refuse to boot on an
+ * already bitten this platform more than once (MRS needed two separate
+ * fixes for it). Refuse to boot on an
  * ambient DATABASE_URL the loaded env file did not define, unless
  * DATABASE_URL_TRUSTED=1 explicitly says that's expected.
  *
@@ -262,9 +262,9 @@ export const IDP_CONFIG = {
   ).replace(/\/$/, ""),
   port: envInt("PORT", 7300),
   /**
-   * Interface to bind. Loopback by default, per DEPLOYMENT-GUIDE.md's C5
-   * pre-deploy check ("All 4 API ports loopback-only: 7100/7200/7300/7400 …
-   * Nothing on 0.0.0.0") and SERVER-INFRASTRUCTURE-AUDIT.md §2's stated
+   * Interface to bind. Loopback by default, per the pre-deploy
+   * rule ("All 4 API ports loopback-only: 7100/7200/7300/7400 …
+   * Nothing on 0.0.0.0") and the platform's stated
    * architecture: Apache on 80/443 is the ONLY sanctioned public entry point.
    *
    * This service previously passed no host to app.listen() at all, which means
@@ -675,10 +675,10 @@ function assertProdSafeDefaults(): void {
   if (IDP_CONFIG.auditHmacSecret.length < 16)
     problems.push("IDP_AUDIT_HMAC_SECRET must be at least 16 characters");
   // NOTE (2026-07-31, explicit user decision): idpprod intentionally shares the
-  // same a well-known weak password password as gmsprod/dmsprod/mrm (see root CLAUDE.md). C6's
-  // hard boot-refuse on that password was relaxed back down to "documented,
+  // same a well-known weak password password as gmsprod/dmsprod/mrm. The
+  // hard boot-refuse on that password (pre-deploy check C6) was relaxed back down to "documented,
   // not enforced" for this DB — do not re-add without checking with the user
-  // first, since the deploy guide still recommends rotating it.
+  // first, since rotating it is still recommended.
   if (IDP_CONFIG.cookieKeys.some((k) => k.startsWith("dev-cookie-key") || looksLikePlaceholder(k)))
     problems.push("COOKIE_KEYS still uses the dev placeholder keys");
   if (
@@ -722,7 +722,7 @@ function assertProdSafeDefaults(): void {
   // excludes dms.apiBaseUrl/dms.backchannelLogoutUri/gms.apiBase: those are
   // server-to-server calls SSO's own backend makes directly (admin console
   // internal-API calls, backchannel logout POSTs, the GMS bridge), and on
-  // this platform's actual single-host topology (root CLAUDE.md — one
+  // this platform's actual single-host topology (one
   // internal server behind one Apache) they are CORRECTLY 127.0.0.1/loopback
   // in production, not a bug — guarding them here broke a real local-prod
   // boot on 2026-08-07 (SSO_API_BASE/GMS_API_BASE/DMS_API_BASE_URL are all
@@ -772,7 +772,7 @@ function redactDbUrl(url: string): string {
 /**
  * Mirror image of assertProdSafeDefaults(): catches a DEV process that has
  * somehow resolved a production-looking resource — the exact failure mode
- * documented in root CLAUDE.md's "Known footguns" (a machine-wide
+ * known on this platform as a footgun (a machine-wide
  * DATABASE_URL/other env var silently winning over this service's own
  * `.env`). `dotenv.config({ override: true })` above already fixes that for
  * this process's OWN env loading, but this is a loud, independent backstop:

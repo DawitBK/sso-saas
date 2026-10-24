@@ -228,7 +228,7 @@ async function main(): Promise<void> {
   //
   // A backend-level version of this guard was tried and reverted the same
   // session it was added (2026-09-21) — it caused a live redirect loop. The
-  // frontend (Next.js, SSO/frontend/proxy.ts) reverse-proxies EVERY browser-
+  // frontend (Next.js, frontend/proxy.ts) reverse-proxies EVERY browser-
   // facing path (`/authorize`, `/interaction`, `/portal`, ...) to this
   // backend server-side (see next.config.ts's `rewrites().fallback`, and
   // this app's own binding: only 127.0.0.1, never reachable directly by a
@@ -242,7 +242,7 @@ async function main(): Promise<void> {
   // backend → ...). The frontend-level guard is both necessary and
   // sufficient: it is the only hop a real browser ever reaches directly, and
   // it already stops a stray 127.0.0.1 hit before a single request reaches
-  // this process. See SSO/frontend/proxy.ts for the guard itself.
+  // this process. See frontend/proxy.ts for the guard itself.
 
   // Serve-under-a-subpath fix. This service's routers emit ROOT-relative
   // locations (29 `res.redirect('/portal...')` / `'/interaction/...'` call
@@ -602,11 +602,11 @@ async function main(): Promise<void> {
   // ── Everything else → oidc-provider (auth, token, jwks, userinfo, discovery)
   app.use(provider.callback());
 
-  // Loopback-only by default — see IDP_CONFIG.host and DEPLOYMENT-GUIDE.md C5.
+  // Loopback-only by default — see IDP_CONFIG.host.
   if (IDP_CONFIG.isProd && IDP_CONFIG.host === '0.0.0.0') {
     logger.error(
       { host: IDP_CONFIG.host, port: IDP_CONFIG.port },
-      '[idp:ALERT] HOST is 0.0.0.0 in production — this exposes the IdP directly on every network interface, bypassing the Apache edge and TLS. DEPLOYMENT-GUIDE.md C5 requires loopback-only. Unset HOST unless this is a deliberate multi-host topology.',
+      '[idp:ALERT] HOST is 0.0.0.0 in production — this exposes the IdP directly on every network interface, bypassing the Apache edge and TLS. The production pre-deploy check (C5) requires loopback-only. Unset HOST unless this is a deliberate multi-host topology.',
     );
   }
   const server = app.listen(IDP_CONFIG.port, IDP_CONFIG.host, () => {

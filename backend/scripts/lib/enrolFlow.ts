@@ -13,16 +13,17 @@ import { answerProblem } from '../../src/owner/questions.js';
 import { acceptTotpStep } from '../../src/owner/limiter.js';
 import { authenticatorRequiredForNewEnrolment } from '../../src/owner/runtime.js';
 import type { StoreKeys } from '../../src/owner/seal.js';
+import { repoRootFrom } from './repoRoot.js';
 import { askHidden, askHiddenTwice, askVisible } from './terminal.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-/** The repository root (scripts/lib -> backend -> SSO -> repo). A key file anywhere under it is refused. */
-export const REPO_ROOT = path.resolve(here, '../../../..');
+/** The repository root (the nearest folder with a .git entry; without one, backend's parent). A key file anywhere under it is refused. */
+export const REPO_ROOT = repoRootFrom(here, path.resolve(here, '../../..'));
 
 export async function chooseKeyFile(current: string): Promise<string> {
   if (current) return current;
   console.log('  OWNER_STORE_KEY_FILE is not set. Choose where the key file goes: a path OUTSIDE the repository, readable only by the account that runs SSO.');
-  const p = (await askVisible('  Key file path (for example D:\\secrets\\owner-store.key): ')).trim();
+  const p = (await askVisible('  Key file path (for example C:\\secrets\\owner-store.key): ')).trim();
   if (!p) {
     console.error('  No path given. Nothing was changed.');
     process.exit(1);

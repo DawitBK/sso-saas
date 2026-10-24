@@ -7,7 +7,7 @@
 // Why a list and not `--audit-level`: a plain level gate turns red on an advisory that has NO fixed version published, and then gets
 // switched off for everything. This keeps the gate on and makes each exception explicit and dated.
 //
-// Usage: node scripts/audit-gate.mjs   (from SSO/backend; needs network access to the npm registry)
+// Usage: node scripts/audit-gate.mjs   (from backend; needs network access to the npm registry)
 import { spawnSync } from 'node:child_process';
 
 const ACCEPTED = [

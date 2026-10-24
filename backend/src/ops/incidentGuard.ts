@@ -21,7 +21,7 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
  *    alone AND needs the owner's one-time authorisation (owner operation `audit.chain.acknowledge`) AND the console's CSRF token, all checked by the route
  *    itself after this guard; an acknowledgement never clears the lock and only covers a break already on record (admin/audit.ts acknowledgeChainBreak).
  * Matching is by whole path segment (licenses/guard.ts isAllowlisted): `/api/v1/admin/audit/chain-acknowledgementsx` and `/api/v1/admin/audit` are NOT allowed.
- * Clearing the lock itself is still only the terminal command (deploy/tamper/tamper.cjs clear).
+ * Clearing the lock itself is still only the terminal command (the watcher's clear command).
  */
 export const INCIDENT_EXTRA_ALLOWLIST: readonly string[] = ['/api/v1/owner/verification', '/api/v1/admin/audit/chain-acknowledgements'];
 

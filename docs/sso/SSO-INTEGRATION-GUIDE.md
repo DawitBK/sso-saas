@@ -126,7 +126,7 @@ administer it yourself, register:
 
 **Public clients are not supported by this IdP.** Every client is registered as a
 confidential client that authenticates at the token endpoint with
-`client_secret_post` (`SSO/backend/src/oidc/clients.ts`, `loadClients`); there
+`client_secret_post` (`backend/src/oidc/clients.ts`, `loadClients`); there
 is no way to register `token_endpoint_auth_method: none` through configuration.
 A browser-only SPA with no backend able to hold a secret therefore cannot be
 onboarded as-is: put a small server-side component (a backend-for-frontend) in
@@ -141,7 +141,7 @@ while the stored secret is still a development default. After that, editing the
 environment does not change an existing client: SSO logs an
 `[idp:clients:WARN]` line at boot while the stored and configured addresses
 differ. Apply the new addresses with `npm run client:uris` (dry run) and
-`npm run client:uris -- --apply` in `SSO/backend`, then restart SSO.
+`npm run client:uris -- --apply` in `backend`, then restart SSO.
 
 A production deployment must use real, non-`localhost` redirect URIs and
 a real generated secret — never ship a placeholder or development
@@ -157,8 +157,8 @@ and get that tile added at the same time you register the client so the
 two don't drift out of sync.
 
 In this IdP the two steps are exactly **two list entries**: the client in
-`SSO/backend/src/config.ts` (`clientSeed`) and the tile in
-`SSO/backend/src/portal/catalog.ts` (`APP_REGISTRY`). The admin console's
+`backend/src/config.ts` (`clientSeed`) and the tile in
+`backend/src/portal/catalog.ts` (`APP_REGISTRY`). The admin console's
 "App access" list is derived from `APP_REGISTRY`, so it needs no third edit (it
 used to be a separate hand-kept list; that was merged on 2026-10-04). An app with
 its own roles also needs role code on the IdP side.

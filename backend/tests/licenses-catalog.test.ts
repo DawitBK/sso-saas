@@ -6,7 +6,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { LICENSE_SYSTEMS, MODULE_CATALOG, isLicenseSystem, moduleKeys } from '../src/licenses/catalog.js';
 
-const DOC = path.resolve(__dirname, '../../../docs/operations/PLATFORM-LICENSING.md');
+const DOC = path.resolve(__dirname, '../../docs/operations/PLATFORM-LICENSING.md');
 
 /** The backtick-quoted keys in a section-7 bullet, up to its "Core:" part. */
 function documentedKeys(markdown: string, system: 'GMS' | 'DMS'): string[] {

@@ -2,12 +2,12 @@
  * export-directory.ts: writes the company directory (who has an SSO account) to a file the DMS data compiler can read.
  *
  * Why: a department's questionnaire often lists people by name with no e-mail address (Finance's did, for all 29 people), and the address is the person's DMS login. An address is never
- * invented: it is looked up here, in the accounts that already exist (most staff were imported from GMS), by name, with a confidence level (DMS/backend/scripts/lib/collectedCleaning.ts).
+ * invented: it is looked up here, in the accounts that already exist (most staff were imported from GMS), by name, with a confidence level (DMS's `collectedCleaning.ts`).
  *
  * Read-only: one SELECT, no writes. The file holds names and work e-mail addresses, so it is NOT committed (DMS/.gitignore lists it) and is not for sharing.
  * The platform administrator is never included (the same rule as every console list).
  *
- *   npm run data:export-directory                (from SSO/backend; development or mirror database, whichever the environment points at)
+ *   npm run data:export-directory                (from backend; development or mirror database, whichever the environment points at)
  *   COLLECTED_DIRECTORY_FILE=... to write somewhere else
  */
 import fs from 'node:fs';

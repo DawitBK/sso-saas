@@ -26,8 +26,8 @@ export class GmsInternalApiError extends Error {
   }
 }
 
-// Shared factory (infrastructure/internalApiClient.ts) — see Finding 6/10 in
-// /docs/audits/PHASE-02-10-14-CODE-REVIEW-FINDINGS.md: this client previously had NO
+// Shared factory (infrastructure/internalApiClient.ts) — see Finding 6/10 of the
+// PHASE-02-10-14 code review: this client previously had NO
 // timeout at all, unlike its dms-internal-client.ts/bridge/gms.ts siblings.
 // IDP_CONFIG.gms.internalTimeoutMs (new) closes that gap.
 const client = createInternalApiClient({

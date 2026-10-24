@@ -5,10 +5,10 @@
  *   1. CONTAIN   write the incident lock (read-only mode, ops/incidentLock.ts) when the policy says so;
  *   2. REVOKE    end the offending actor's sessions and tokens (auth/revoke.ts), never the owner's own;
  *   3. RECORD    one append-only, hash-chained row in `security_incidents` (migration 028) plus a `security.incident` row in the admin audit chain;
- *   4. ALERT     an error-level log line, and one line in the alert spool next to the lock file for the out-of-process watcher (deploy/tamper) to e-mail.
+ *   4. ALERT     an error-level log line, and one line in the alert spool next to the lock file for the out-of-process watcher to e-mail.
  *
  * What it NEVER does: stop a service, delete anything, disable an account, rotate or destroy any key (the signing-key rotation and the vault master key are
- * manual, owner-confirmed operations), or clear a lock (the owner does that from a terminal with deploy/tamper/tamper.cjs, never through the web).
+ * manual, owner-confirmed operations), or clear a lock (the owner does that from a terminal with the watcher's clear command, never through the web).
  *
  * Modes (IDP_CONFIG.incidentResponse): `contain` = all four steps; `alert` = record and alert only (the default outside production, so development is never locked
  * unless someone switches it on); `off` = ignore events.

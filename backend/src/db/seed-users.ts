@@ -5,7 +5,7 @@
  * instead of the single seeded admin from seed-dev.ts.
  *
  * Sources (all read-only — never edited by this script):
- *  - `GMS/backend/src/seeders/data/legacy-users.json` — 234 real employee
+ *  - GMS's `legacy-users.json` — 234 real employee
  *    rows, each `[id, officeId, email, password_hash, full_name, location,
  *    department]` (see GMS's own 002-password-seeder.js for this shape).
  *    `password_hash` (a real bcrypt hash, GMS's own bcryptjs) is copied
@@ -15,12 +15,12 @@
  *    can sign into SSO with the exact password they already use for GMS.
  *    This script never sees or needs their plaintext. These 234 also get
  *    DMS role `EMPLOYEE` (a real, existing low-privilege DMS role — see
- *    DMS/backend/src/config/permissions.ts) in addition to GMS's own
+ *    DMS's `permissions.ts`) in addition to GMS's own
  *    existing `host` role assignment, which is left exactly as it was.
  *  - GMS's 2 bootstrap accounts (master@gms.local / admin@gms.local), hardcoded
  *    below with GMS role `super_admin`.
- *  - `DMS 10/backend/scripts/seed-core.ts`'s `DEMO_USERS` — 13 demo accounts,
- *    hardcoded below (email + DMS role), mirrored from that file by hand.
+ *  - The DMS seed script's (`seed-core.ts`) `DEMO_USERS` — 13 demo accounts,
+ *    hardcoded below (email + DMS role), mirrored from that script by hand.
  *
  * The GMS bootstrap and DMS demo accounts above are synthetic, not real
  * people, so they keep the FIXED dev password seed-dev.ts's admin account
@@ -37,7 +37,7 @@
  *
  * GUARD: refuses to run when IDP_CONFIG.isProd — this script now handles 234
  * real employee names/emails and must never touch a production database
- * (mirrors DMS's own backend/scripts/seed-reset.ts production guard).
+ * (mirrors the production guard of DMS's own seed-reset script).
  *
  * Run: npm run db:seed:users  (after db:seed:dev)
  */
@@ -70,7 +70,7 @@ const LEGACY_USERS_PATH = path.join(
 
 interface DemoUser { email: string; firstName: string; lastName: string; role: string }
 
-/** Mirrored by hand from `DMS 10/backend/scripts/seed-core.ts`'s DEMO_USERS —
+/** Mirrored by hand from the DMS seed script's (`seed-core.ts`) DEMO_USERS —
  *  email + DMS role only (dept/tenant assignment stays DMS's own concern). */
 const DMS_DEMO_USERS: DemoUser[] = [
   { email: 'admin@edams.local', firstName: 'System', lastName: 'Admin', role: 'SYSTEM_ADMIN' },
@@ -192,7 +192,7 @@ async function main(): Promise<void> {
   console.log(`[seed-users] Seeded ${DMS_DEMO_USERS.length} DMS demo accounts.`);
 
   // DMS's internal API rate limit (60/min per IP, fixed window — see
-  // internalApiRateLimit in DMS/backend/src/shared/internalAuth.ts) doesn't
+  // internalApiRateLimit in DMS's `internalAuth.ts`) doesn't
   // reset on a sliding basis. The 13 DMS demo users above already burned 26
   // requests against whatever window happened to be open when this run
   // started; starting the paced legacy loop (below) immediately into that
@@ -224,7 +224,7 @@ async function main(): Promise<void> {
     const userId = await upsertIdpUser(email, givenName, familyName, realHash, false);
     // Each assign() call costs 2 requests against DMS's internal API (GET
     // current role, then PUT the new one), which is rate-limited to 60/min
-    // per IP (DMS/backend/src/shared/internalAuth.ts). 234 legacy users run
+    // per IP (DMS's `internalAuth.ts`). 234 legacy users run
     // back-to-back would blow through that in well under a minute, so pace
     // this loop at 1 assign() per 2.2s (~2 req/2.2s ≈ 55/min, under the cap).
     await assign(userId, email, 'EMPLOYEE', 'host');

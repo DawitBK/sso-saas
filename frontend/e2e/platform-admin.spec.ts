@@ -8,9 +8,9 @@ import { adminCsrf, login } from './helpers';
  * passwords are only ever typed at a terminal (backend/scripts/seed-platform-admin.ts). So these specs run only when the owner has made
  * one on the DEV database and says so:
  *
- *   cd SSO/backend && npx tsx scripts/seed-platform-admin.ts          (asks for the vault and account passwords)
+ *   cd backend && npx tsx scripts/seed-platform-admin.ts          (asks for the vault and account passwords)
  *   set SSO_E2E_PLATFORM_EMAIL=...  &&  set SSO_E2E_PLATFORM_PASSWORD=...   (the account just created; never commit them)
- *   cd SSO/frontend && npx playwright test e2e/platform-admin.spec.ts
+ *   cd frontend && npx playwright test e2e/platform-admin.spec.ts
  *
  * Without them every test here is skipped (and says why), so the suite stays green on a machine that has no such account. The rules this
  * file would exercise are also proved over HTTP, with the gate mocked, in backend/tests/{settings-api,clients-api,audit-chain-api}.test.ts.

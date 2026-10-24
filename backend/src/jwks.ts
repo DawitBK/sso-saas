@@ -58,8 +58,8 @@ export async function loadSigningJwks(): Promise<PrivateJwk[]> {
   if (rows.length > 0) {
     // Exactly one key should ever be active (see rotateSigningKey). More than
     // one means rotation was bypassed — generateSigningKey() called directly,
-    // or the table hand-edited, which /docs/audits/PLATFORM-MASTER-AUDIT-GUIDE.md:104-106
-    // explicitly warns against. Which key signs then depends on row ordering
+    // or the table hand-edited, which is
+    // not supported. Which key signs then depends on row ordering
     // rather than intent. Loud, not fatal: the estate keeps working.
     const activeCount = rows.filter((r) => r.is_active).length;
     if (activeCount > 1) {
@@ -272,8 +272,7 @@ export async function generateSigningKey(): Promise<PrivateJwk> {
  *
  * WHY THIS EXISTS: the console's rotate button called generateSigningKey()
  * directly, which only ever INSERTs `is_active = TRUE` and never demotes the
- * previous key. Three clicks left three active keys. That breaks the model
- * /docs/operations/PLATFORM-SECRETS-AND-DATA-INTEGRITY-GUIDE.md:103-111 documents and that the
+ * previous key. Three clicks left three active keys. That breaks the model that the
  * rest of this file assumes — "rotating a signing key keeps the old one
  * published in the public key list for an overlap window", i.e. exactly ONE
  * active signing key plus zero or more retired-but-published ones. With

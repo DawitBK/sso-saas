@@ -121,5 +121,5 @@ console.log("");
 console.log("All production safety assertions passed.");
 console.log("");
 console.log("Note: this checks CONFIGURATION only. It does not prove Postgres is reachable");
-console.log("or that AD binds — those are verified by the health checks in");
-console.log("DEPLOYMENT-GUIDE.md after the service starts.");
+console.log("or that AD binds — those are verified by the health checks described in");
+console.log("docs/sso/SSO-OPERATIONS.md after the service starts.");

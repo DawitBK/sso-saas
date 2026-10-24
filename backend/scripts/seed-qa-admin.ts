@@ -5,7 +5,7 @@
  *   qa.hiddenowner@qa.local / Pass1234!   marked as a PLATFORM ADMINISTRATOR so the browser specs can prove it never
  *                                         appears in any list the other administrators see (dev database only)
  *
- * The Playwright specs in SSO/frontend/e2e sign in as this account (SSO_E2E_EMAIL / SSO_E2E_PASSWORD).
+ * The Playwright specs in frontend/e2e sign in as this account (SSO_E2E_EMAIL / SSO_E2E_PASSWORD).
  * Refuses on production and on the production-parity mirror (IDP_CONFIG.isProd).
  */
 import { pool } from '../src/db/pool.js';

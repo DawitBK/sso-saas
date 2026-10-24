@@ -11,10 +11,10 @@ const RedisCtor = ((IORedis as any).default ?? IORedis) as new (
 
 /**
  * Entirely optional — SSO has no Redis dependency today (see
- * PLATFORM_ARCHITECTURE.md §9, and /docs/operations/PLATFORM-OPERATIONS-GUIDE.md §6), and
+ * PLATFORM_ARCHITECTURE.md §9), and
  * this box is RAM-constrained (~10GB total, already running Postgres +
- * MySQL + MSSQL + Redis-for-DMS + ~10 Node processes — see
- * SERVER-INFRASTRUCTURE-AUDIT.md §1/§4). Provisioning Redis specifically
+ * MySQL + MSSQL + Redis-for-DMS + ~10 Node processes).
+ * Provisioning Redis specifically
  * for SSO is not being forced on anyone by this file: if REDIS_URL isn't
  * set, this returns null and every rate limiter below falls back to its
  * existing per-process in-memory store exactly as it does today — no new

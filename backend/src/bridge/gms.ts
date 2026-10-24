@@ -39,8 +39,8 @@ function assertConfigured(): void {
   if (!IDP_CONFIG.gms.apiBase) throw new Error('GMS_API_BASE is not configured');
 }
 
-// Shared factory (infrastructure/internalApiClient.ts) — see Finding 6/10 in
-// /docs/audits/PHASE-02-10-14-CODE-REVIEW-FINDINGS.md. 8s timeout kept as-is (deliberately
+// Shared factory (infrastructure/internalApiClient.ts) — see Finding 6/10 of the
+// PHASE-02-10-14 code review. 8s timeout kept as-is (deliberately
 // longer than the admin-console GMS/DMS clients): this is a single hop in an
 // interactive redirect chain, not the token-issuance critical path those two
 // are on. `requireData: true` preserves this call's historically stricter

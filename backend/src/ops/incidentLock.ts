@@ -6,7 +6,7 @@
  * licenses/guard.ts); reads keep working. Unset path = the feature is off (development and tests). The file holds a small JSON object
  * `{ at, reason, kind }` and NO secret.
  *
- * It is a file, not a database row, on purpose: the out-of-process watcher (deploy/tamper/tamper.cjs) can create it when every application is down or
+ * It is a file, not a database row, on purpose: the out-of-process watcher (not part of this edition) can create it when every application is down or
  * compromised, and the owner removes it from a terminal (`tamper.cjs clear`), never through the web. The stat result is cached for three seconds so the guard
  * costs one `stat` per three seconds, not one per request. A path that cannot be read for any reason other than "does not exist" counts as NOT locked
  * (failing open: a broken disk must not turn into a locked-out platform), and is logged once.

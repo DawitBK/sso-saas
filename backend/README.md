@@ -6,12 +6,12 @@ Example Corp platform. Express 5 + [`oidc-provider`](https://github.com/panva/no
 
 This process **never renders HTML for the app's own pages**. Every route calls
 `res.render(view, locals)`, but `http/view-model.ts` wraps that so it returns a
-JSON `{ view, locals }` view model instead; `SSO/frontend` (Next.js, port 7301)
+JSON `{ view, locals }` view model instead; `frontend` (Next.js, port 7301)
 is the only process that turns one into a page. The exceptions — three
 `oidc-provider`-owned HTML responses — are listed in `src/http/csp.ts`.
 
-For how this system fits the platform, see `../CLAUDE.md`. For a production
-deploy, `/DEPLOYMENT-GUIDE.md` at the repo root is canonical.
+For how this system fits the platform, see `../docs/platform/PLATFORM_ARCHITECTURE.md` and
+`../docs/sso/SSO-ARCHITECTURE.md`. For a production deploy, see `../DEPLOY-WINDOWS-MANUAL.md`.
 
 ## What it does
 
@@ -38,7 +38,7 @@ claims (migration `012_client_scopes.sql`):
 
 | `client_id` | Who | Scopes |
 |---|---|---|
-| `edams` | DMS (see `../CLAUDE.md` on why the id is not `dms`) | `openid profile email ad_groups edams_roles` |
+| `edams` | DMS (the id stays `edams`: renaming it to `dms` would orphan the role mappings seeded under it) | `openid profile email ad_groups edams_roles` |
 | `gms` | the GMS token bridge | `openid profile email ad_groups gms_roles` |
 | `portal` | this system's own launcher | `openid profile email ad_groups` |
 
@@ -84,7 +84,7 @@ session (a no-op when LDAP is not configured).
 ## Run (development)
 
 ```bash
-cd SSO/backend
+cd backend
 npm install
 cp .env.example .env      # then fill in secrets
 npm run db:migrate        # apply schema to the `idp` database
@@ -165,7 +165,7 @@ requires Docker.
 | `npm run db:seed:dev` / `:prod` | dev login `admin@examplecorp.com` / `demo` |
 | `npm run db:seed:users` | seed the local user store |
 | `npm run db:backup` / `:prod` | `pg_dump` via `scripts/db-backup.ts` |
-| `npm run data:export-directory` | write the company directory (names and addresses, no secrets) for DMS's department-data compiler to match names against (`DMS/Collected-Data/.sso-directory.json`, git-ignored) |
+| `npm run data:export-directory` | write the company directory (names and addresses, no secrets) for DMS's department-data compiler to match names against (DMS's `.sso-directory.json`, git-ignored) |
 | `npm run data:quality` | **read-only** report of accounts whose address or name looks wrong: mistyped company domain, no dot in the domain, throw-away address, empty name, possible duplicate person, each with a suggested correction. Optional `-- --csv=file.csv`. Never changes an account |
 | `npm run audit:verify` | verify the admin audit log's hash chain (lists every break and whether it is acknowledged) |
 | `npm run db:ack:dev-audit` | **dev only**: acknowledge the ten July 2026 breaks in the dev database (refuses on production and the mirror) |
@@ -184,7 +184,7 @@ node test-scripts/dms-sso-test.mjs      # DMS authorize → SSO → code → DMS
 node test-scripts/browser-clickthrough.mjs      # headless Chromium walk-through; writes screenshots/
 ```
 
-The console and the sign-in pages are covered by the Playwright suite in `SSO/frontend/e2e/` (`npm run e2e` there), which replaced the
+The console and the sign-in pages are covered by the Playwright suite in `frontend/e2e/` (`npm run e2e` there), which replaced the
 server-rendered-console scripts removed on 2026-10-11.
 
 ## How the Applications page (`/admin/clients`) changes a client without a restart
@@ -239,4 +239,5 @@ test-scripts/          live verification harnesses (see above)
 - `../docs/sso/SSO-INTEGRATION-CODE-REFERENCE.md` — exact env values + working code
 - `../docs/sso/SSO-OPERATIONS.md` — key rotation, sessions, audit chain
 - `../docs/platform/PLATFORM_ARCHITECTURE.md`, `../docs/platform/ADR.md`
-- `/DEPLOYMENT-GUIDE.md`, `/SERVER-DEPLOYMENT-TODO.md` at the repo root
+- `../DEPLOY-WINDOWS-MANUAL.md`: deploying on Windows
+- `../docs/operations/PLATFORM-LICENSING.md`: the licensing contract

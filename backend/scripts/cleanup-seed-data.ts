@@ -20,13 +20,13 @@
  * through DMS's internal API, the DMS role mapping).
  *
  * On --execute it writes `cleanup-removed-personal-groups-<time>.json` (in ./logs) naming the
- * removed accounts' personal groups, for DMS/backend/scripts/cleanup-seed-data.ts
+ * removed accounts' personal groups, for DMS's `cleanup-seed-data.ts`
  * --personal-groups-file=..., since DMS keys its role mappings on those names.
  *
  * DRY RUN unless --execute; one transaction, so a failure changes nothing. In mirror or
  * production it additionally demands I_UNDERSTAND_THIS_DELETES=<database name>.
  *
- * Usage (from SSO/backend; mirror/production MUST use the launcher or this targets DEV):
+ * Usage (from backend; mirror/production MUST use the launcher or this targets DEV):
  *   npx tsx scripts/cleanup-seed-data.ts
  *   npx tsx scripts/cleanup-seed-data.ts --users=tester@example.com --execute
  *   node scripts/run-with-env.cjs mirror npx tsx scripts/cleanup-seed-data.ts --execute
@@ -145,7 +145,7 @@ async function main() {
     const listFile = path.join(logDir, `cleanup-removed-personal-groups-${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
     fs.writeFileSync(listFile, JSON.stringify({ database: dbName, removedAt: new Date().toISOString(), personalGroupDns: personalDns }, null, 2));
     console.log(`  Personal groups written to ${listFile}`);
-    console.log('  Pass it to DMS/backend/scripts/cleanup-seed-data.ts as --personal-groups-file=<that path>.');
+    console.log('  Pass it to the DMS script cleanup-seed-data.ts as --personal-groups-file=<that path>.');
 
     // DMS holds the DMS role mapping for each personal group. Best effort: a DMS that is down
     // leaves harmless orphan mapping rows, and DMS's own cleanup-seed-data.ts removes them too.
@@ -155,7 +155,7 @@ async function main() {
       for (const dn of personalDns) {
         try { await putDmsRoleMapping(IDP_CONFIG.dmsDefaultTenant, dn, [], 'cleanup-seed-data'); cleared++; } catch { failed++; }
       }
-      console.log(`  DMS role mappings cleared: ${cleared}${failed ? ` (${failed} could not be reached; run DMS/backend/scripts/cleanup-seed-data.ts too)` : ''}`);
+      console.log(`  DMS role mappings cleared: ${cleared}${failed ? ` (${failed} could not be reached; run the DMS script cleanup-seed-data.ts too)` : ''}`);
     }
     console.log('');
   } catch (err) {

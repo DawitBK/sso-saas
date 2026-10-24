@@ -1,4 +1,4 @@
-// The pure parts of the process supervisor (SSO/deploy/supervise-lib.cjs). The process handling itself (restart, watchdog,
+// The pure parts of the process supervisor (deploy/supervise-lib.cjs). The process handling itself (restart, watchdog,
 // single-instance lock, --stop) is exercised against real child processes by test-scripts/supervise-live.mjs.
 import path from 'node:path';
 

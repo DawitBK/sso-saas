@@ -223,8 +223,8 @@ export async function getAccess(
  * Live, authoritative status of the user INSIDE each app — read straight from the
  * app's own database. SSO's assignment is applied at EVERY sign-in, not only the first:
  * for DMS, SSO's list wins unless a DMS administrator edited the roles inside DMS and
- * SSO's list is unchanged since (rules R1-R4 in DMS/Documentations/SSO-DMS-SYNC-AND-
- * CONFLICT-RULES.md); saving access signs the person out when something changed.
+ * SSO's list is unchanged since (rules R1-R4 in the DMS edition's SSO-DMS-SYNC-AND-CONFLICT-RULES
+ * document); saving access signs the person out when something changed.
  */
 // `id` is the app's OWN primary key for this user (DMS's UUID / GMS's bigint,
 // stringified) — needed so callers can address DMS's internal permissions API

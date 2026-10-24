@@ -228,7 +228,7 @@ export default function OwnerVerificationPage() {
       <section className="admin-card" aria-labelledby="owner-cmd-title">
         <h2 id="owner-cmd-title" className="admin-section-title" style={{ margin: '0 0 8px' }}>Setting up and recovering (on the server)</h2>
         <p className="admin-hint" style={{ margin: '0 0 12px' }}>
-          These are run by the server operator at a terminal, in the <code className="admin-code">SSO/backend</code> folder on the server. Your answers are typed there, never on this page.
+          These are run by the server operator at a terminal, in the <code className="admin-code">backend</code> folder on the server. Your answers are typed there, never on this page.
         </p>
         <ul className="owner-commands">
           {SERVER_COMMANDS.map((c) => (

@@ -1,7 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 
 /**
- * SSO admin console, driven as a real administrator (`npm run db:seed:qa-admin` in SSO/backend creates
+ * SSO admin console, driven as a real administrator (`npm run db:seed:qa-admin` in backend creates
  * qa.ssoadmin@qa.local / Pass1234!; override with SSO_E2E_EMAIL / SSO_E2E_PASSWORD).
  *
  *   5.7.2  the Users list can be filtered by the system a person may sign in to and by the role they hold there

@@ -15,6 +15,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { calculateJwkThumbprint, exportJWK } from 'jose';
+import { repoRootFrom } from './lib/repoRoot.js';
 
 const args = process.argv.slice(2);
 const out = args[args.indexOf('--out') + 1];
@@ -23,7 +24,8 @@ if (args.indexOf('--out') < 0 || !out) {
   process.exit(2);
 }
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = repoRootFrom(scriptDir, path.resolve(scriptDir, '..', '..'));
 const outDir = path.resolve(out);
 const rel = path.relative(repoRoot, outDir);
 if (rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel))) {
