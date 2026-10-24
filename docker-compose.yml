@@ -19,8 +19,9 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      # The Dockerfile copies backend/..., so the repository root is the build context.
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: sso-backend
     init: true
     restart: always

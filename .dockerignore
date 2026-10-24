@@ -1,0 +1,13 @@
+# The backend image is built from the repository root (backend/Dockerfile copies backend/...). Keep everything else, and every
+# settings file with real values, out of the build.
+.git
+frontend
+**/node_modules
+**/dist
+**/.next
+**/logs
+**/*.log
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.production.example
