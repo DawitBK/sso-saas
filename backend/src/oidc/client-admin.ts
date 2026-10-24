@@ -13,6 +13,7 @@ import { DEV_DEFAULT_CLIENT_SECRETS, IDP_CONFIG } from '../config.js';
 import { pool } from '../db/pool.js';
 import { PA_IDS_SQL } from '../auth/platform-admin.js';
 import { sameUriSet } from './clients.js';
+import { catalogEditable, clientCatalog, type CatalogRole } from '../admin/app-role-catalog.js';
 
 /** Plain-language facts about each seeded client that the database does not hold. */
 export const CLIENT_FACTS: Record<string, { pattern: string; rolesScope: string | null; critical: string | null; secretNote: string | null }> = {
@@ -68,6 +69,9 @@ export interface ClientDetails {
   secretNote: string | null;
   usage: ClientUsage;
   entitledUsers: number | null;
+  /** The roles that can be given to a person for this application, with how many hold each (the client page edits them when `rolesEditable`). */
+  roles: CatalogRole[];
+  rolesEditable: boolean;
 }
 
 interface Row {
@@ -142,7 +146,14 @@ function toDetails(row: Row, usage: ClientUsage, entitledUsers: number | null): 
     secretNote: facts.secretNote,
     usage,
     entitledUsers,
+    roles: [],
+    rolesEditable: false,
   };
+}
+
+/** Fill in the role catalog, which lives in its own table. */
+async function withRoles(details: ClientDetails): Promise<ClientDetails> {
+  return { ...details, roles: await clientCatalog(details.clientId), rolesEditable: catalogEditable(details.clientId) };
 }
 
 const SELECT = `SELECT client_id, client_secret, name, is_active, scope, grant_types, redirect_uris, post_logout_redirect_uris,
@@ -156,7 +167,7 @@ export async function listClientDetails(entitled: (clientId: string) => Promise<
   // In the order the deployment lists them, so the page does not reshuffle.
   for (const id of SEEDED()) {
     const row = byId.get(id);
-    if (row) out.push(toDetails(row, await usageFor(id), await entitled(id)));
+    if (row) out.push(await withRoles(toDetails(row, await usageFor(id), await entitled(id))));
   }
   return out;
 }
@@ -164,7 +175,7 @@ export async function listClientDetails(entitled: (clientId: string) => Promise<
 export async function getClientDetails(clientId: string, entitled: (clientId: string) => Promise<number | null>): Promise<ClientDetails | null> {
   if (!isManagedClient(clientId)) return null;
   const { rows } = await pool.query<Row>(`${SELECT} WHERE client_id = $1`, [clientId]);
-  return rows[0] ? toDetails(rows[0], await usageFor(clientId), await entitled(clientId)) : null;
+  return rows[0] ? withRoles(toDetails(rows[0], await usageFor(clientId), await entitled(clientId))) : null;
 }
 
 export async function updateClientUris(

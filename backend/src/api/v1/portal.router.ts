@@ -64,7 +64,7 @@ export function portalApiRouter(): Router {
       }
 
       const isAdmin = session.groups.includes(IDP_CONFIG.adminGroup);
-      const allow = await entitled(session.groups);
+      const allow = await entitled(session.groups, session.email);
       const apps = catalog().filter((a) => allow.has(a.rp));
 
       // Admins get the console as a first-class tile

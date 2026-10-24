@@ -14,6 +14,7 @@ import { IDP_CONFIG } from "../config.js";
 import { logger } from "../logging/logger.js";
 import { pool } from "../db/pool.js";
 import { revokeAllSessions } from "../auth/revoke.js";
+import { isRoleManagedClient } from "../auth/app-roles.js";
 import { writeAudit } from "./audit.js";
 import {
   listDmsRoleNames,
@@ -896,6 +897,8 @@ export interface ClientUserSummary {
   isActive: boolean;
   lastLoginAt: string | null;
   matchedGroups: string[];
+  /** For an application managed from the console: the roles the person holds in it (empty for every other client). */
+  roles: string[];
 }
 
 /**
@@ -913,6 +916,37 @@ export interface ClientUserSummary {
 export async function usersEntitledToClient(
   clientId: string,
 ): Promise<ClientUserSummary[]> {
+  // An application managed from the console (auth/app-roles.ts) is reached by holding one of its roles, so those are the people.
+  if (await isRoleManagedClient(clientId)) {
+    const { rows } = await pool.query<{
+      id: string;
+      email: string;
+      given_name: string;
+      family_name: string;
+      is_active: boolean;
+      last_login_at: string | null;
+      roles: string[];
+    }>(
+      `SELECT u.id, u.email, u.given_name, u.family_name, u.is_active, u.last_login_at,
+              array_agg(g.role_name ORDER BY g.role_name) AS roles
+         FROM idp_users u
+         JOIN idp_client_user_roles g ON g.email = lower(u.email) AND g.client_id = $1
+        WHERE NOT u.is_platform_admin
+        GROUP BY u.id, u.email, u.given_name, u.family_name, u.is_active, u.last_login_at
+        ORDER BY u.email ASC`,
+      [clientId],
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      email: r.email,
+      givenName: r.given_name,
+      familyName: r.family_name,
+      isActive: r.is_active,
+      lastLoginAt: r.last_login_at,
+      matchedGroups: [],
+      roles: r.roles,
+    }));
+  }
   const { rows: entitlementRows } = await pool.query<{ group_dn: string }>(
     "SELECT group_dn FROM idp_app_entitlements WHERE relying_party = $1",
     [clientId],
@@ -950,6 +984,7 @@ export async function usersEntitledToClient(
       isActive: r.is_active,
       lastLoginAt: r.last_login_at,
       matchedGroups: [],
+      roles: [],
     }));
   }
 
@@ -980,5 +1015,6 @@ export async function usersEntitledToClient(
     isActive: r.is_active,
     lastLoginAt: r.last_login_at,
     matchedGroups: r.matched_groups,
+    roles: [],
   }));
 }

@@ -28,6 +28,8 @@ import type { PortalSession } from "../../portal/session.js";
 import { runAuditChainCheck } from "../../ops/auditChain.js";
 import { PASSWORD_MAX_LENGTH, newPasswordProblem } from "../../auth/password-policy.js";
 import { USER_LIMITS, identityProblems, parseOfficeId } from "../../admin/user-input.js";
+import { applyAppRoles, parseAppRolesInput } from "../../admin/app-access.js";
+import { appAccessOf, isRoleManagedClient, managedCatalog } from "../../auth/app-roles.js";
 import { closeRequestsForUser } from "../../auth/reset-requests.js";
 import { IDP_CONFIG } from "../../config.js";
 import { pool } from "../../db/pool.js";
@@ -477,6 +479,9 @@ export function adminApiRouter(): Router {
           personalDn,
           entitledApps: entitledRows.map((r) => r.relying_party),
           appCatalog: APPS,
+          // The applications managed from the console (a role catalog each) and the roles this person holds in them; none = no access.
+          managedApps: await managedCatalog(),
+          appRoles: await appAccessOf(user.email),
           groups: groups
             .map((g) => g.group_dn)
             .filter((dn) => dn !== personalDn),
@@ -881,6 +886,44 @@ export function adminApiRouter(): Router {
         sendOk(res, { ok: true });
       } catch (err) {
         if (!respondDmsFailure(res, err)) next(err);
+      }
+    },
+  );
+
+  /**
+   * POST /api/v1/admin/users/:id/app-roles
+   * The roles this person holds in the applications managed from the console (auth/app-roles.ts): { app_roles: { "<client id>": ["role", ...] } }.
+   * An application left out of the body is left alone; an empty list takes the person's access to it away. Independent of DMS and GMS, so it
+   * works while either of them cannot be read.
+   */
+  router.post(
+    "/users/:id/app-roles",
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!validateAdminApiCsrf(req)) {
+          sendError(res, 403, "ERR-INVALID-CSRF", "Invalid form submission — please retry.");
+          return;
+        }
+        const session = (req as any).adminSession as PortalSession;
+        const userId = String(req.params.id);
+        if (userId === session.accountId) {
+          sendError(res, 403, "ERR-SELF-SERVICE", "You cannot change your own application access — ask another admin.");
+          return;
+        }
+        const { rows } = await pool.query<{ email: string }>("SELECT email FROM idp_users WHERE id = $1", [userId]);
+        if (!rows[0]) {
+          sendError(res, 404, "ERR-USER-NOT-FOUND", "User not found");
+          return;
+        }
+        const parsed = await parseAppRolesInput(req.body.app_roles);
+        if (!parsed.ok) {
+          sendError(res, 400, "ERR-VALIDATION-FAILED", parsed.message, [{ field: "app_roles", message: parsed.message }]);
+          return;
+        }
+        const changed = await applyAppRoles(req, session.email, { accountId: userId, email: rows[0].email }, parsed.value);
+        sendOk(res, { ok: true, changed });
+      } catch (err) {
+        next(err);
       }
     },
   );
@@ -1730,7 +1773,8 @@ export function adminApiRouter(): Router {
           return;
         }
         const users = await usersEntitledToClient(clientId);
-        sendOk(res, { clientId, name: client.name, users });
+        // `managed`: the application is opened by holding one of its roles (set on each person's page), not by a group.
+        sendOk(res, { clientId, name: client.name, managed: await isRoleManagedClient(clientId), users });
       } catch (err) {
         next(err);
       }

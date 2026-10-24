@@ -19,6 +19,7 @@
 import { IDP_CONFIG } from '../config.js';
 import { pool } from '../db/pool.js';
 import { parseProductTiles } from '../oidc/product-clients.js';
+import { appAccessOf } from '../auth/app-roles.js';
 import { getList } from '../settings/store.js';
 
 export interface AppTile {
@@ -124,8 +125,11 @@ export function adminTile(): AppTile {
  * Filter apps by entitlement: an app is shown if the user has a matching group
  * in idp_app_entitlements for it, OR the app has no entitlement rows (open to
  * all authenticated staff). This is the personalization.
+ *
+ * An application managed from the console (auth/app-roles.ts) is the exception: it is shown only to a person who holds a role in it,
+ * whatever the group entitlements say, because that is also what lets them sign in. Pass the person's email for that rule to apply.
  */
-export async function entitled(groups: string[]): Promise<Set<string>> {
+export async function entitled(groups: string[], email?: string): Promise<Set<string>> {
   const { rows } = await pool.query<{ relying_party: string; group_dn: string }>(
     'SELECT relying_party, group_dn FROM idp_app_entitlements',
   );
@@ -135,6 +139,13 @@ export async function entitled(groups: string[]): Promise<Set<string>> {
   for (const app of catalog()) {
     if (!configured.has(app.rp)) { allowed.add(app.rp); continue; } // no rules → open
     if (rows.some((r) => r.relying_party === app.rp && groupSet.has(r.group_dn))) allowed.add(app.rp);
+  }
+  if (email) {
+    const mine = await appAccessOf(email);
+    for (const [rp, roles] of Object.entries(mine)) {
+      if (roles.length > 0) allowed.add(rp);
+      else allowed.delete(rp);
+    }
   }
   return allowed;
 }

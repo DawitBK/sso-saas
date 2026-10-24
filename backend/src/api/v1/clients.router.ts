@@ -6,6 +6,7 @@
  *   PUT  /api/v1/admin/clients/:clientId/uris     replace the redirect and post-logout addresses            (platform administrator)
  *   POST /api/v1/admin/clients/:clientId/restore-uris   put the addresses back to the configured ones           (platform administrator)
  *   PUT  /api/v1/admin/clients/:clientId/active   switch a client on or off; off also ends what it already holds (platform administrator)
+ *   PUT  /api/v1/admin/clients/:clientId/roles    replace the roles that can be given for the application   (any console administrator)
  *   POST /api/v1/admin/clients/:clientId/rotate-secret   a new secret, shown once                             (platform administrator)
  *
  * Reading belongs to every console administrator. Anything that changes who may receive a sign-in belongs to the platform
@@ -24,6 +25,7 @@ import { IDP_CONFIG } from '../../config.js';
 import type { PortalSession } from '../../portal/session.js';
 import { getClientDetails, isManagedClient, listClientDetails, rotateClientSecret, setClientActive, updateClientUris } from '../../oidc/client-admin.js';
 import { validateClientUris } from '../../oidc/client-validation.js';
+import { replaceClientCatalog } from '../../admin/app-role-catalog.js';
 import { requireOwnerAuthorisation } from '../../owner/middleware.js';
 import { issueAdminCsrf, validateAdminApiCsrf } from './admin.router.js';
 import { sendError, sendOk } from './platform.router.js';
@@ -151,6 +153,25 @@ export function clientsRouter(): Router {
       const { revokedArtifacts } = await setClientActive(g.clientId, active, g.actor);
       await writeAudit(req, g.session.email, active ? 'client.enable' : 'client.disable', g.clientId, { revokedArtifacts });
       await respondWithClient(res, g.clientId, 200, { revokedArtifacts });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // The roles that can be given to a person for this application (the App access panel offers exactly these). Any console administrator may
+  // edit them: a role name means nothing to an application that does not recognise it, so this grants nothing by itself.
+  router.put('/:clientId/roles', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const session = (req as Request & { adminSession?: PortalSession }).adminSession as PortalSession;
+      if (!validateAdminApiCsrf(req)) return sendError(res, 403, 'ERR-INVALID-CSRF', 'Invalid CSRF token');
+      const clientId = String(req.params.clientId);
+      const result = await replaceClientCatalog(clientId, (req.body as { roles?: unknown })?.roles);
+      if (!result.ok) return sendError(res, result.status, result.code, result.message);
+      await writeAudit(req, session.email, 'client.roles.update', clientId, {
+        before: result.before.map((r) => r.roleName),
+        after: result.after.map((r) => r.roleName),
+      });
+      await respondWithClient(res, clientId);
     } catch (err) {
       next(err);
     }

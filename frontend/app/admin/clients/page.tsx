@@ -32,6 +32,10 @@ interface Client {
   secretNote: string | null;
   usage: { activeGrants: number; activeRefreshTokens: number; activeAccessTokens: number; lastTokenIssuedAt: string | null };
   entitledUsers: number | null;
+  /** The roles that can be given to a person for this application, with how many hold each. */
+  roles: Array<{ roleName: string; displayName: string; sortOrder: number; holders: number }>;
+  /** Whether the catalog can be edited here (not for DMS, GMS and the portal, which have their own role flows). */
+  rolesEditable: boolean;
 }
 interface ClientsData { clients: Client[]; viewerIsPlatformAdmin: boolean; protectedClients: string[]; csrf: string }
 
@@ -89,6 +93,9 @@ export default function ClientsPage() {
   const [rotateError, setRotateError] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<{ client: Client; secret: string } | null>(null);
   const [saved, setSaved] = useState(false);
+  const [editingRoles, setEditingRoles] = useState<Client | null>(null);
+  const [roleRows, setRoleRows] = useState<Array<{ roleName: string; displayName: string; holders: number; isNew: boolean }>>([]);
+  const [rolesError, setRolesError] = useState<string | null>(null);
 
   const token = csrf || query.data?.csrf || '';
 
@@ -120,6 +127,25 @@ export default function ClientsPage() {
       setEditing(null);
     } catch (err) {
       setEditError(errorMessage(err));
+    }
+  }
+
+  function openRoles(c: Client) {
+    setEditingRoles(c);
+    setRoleRows(c.roles.map((r) => ({ roleName: r.roleName, displayName: r.displayName, holders: r.holders, isNew: false })));
+    setRolesError(null);
+  }
+
+  async function saveRoles() {
+    if (!editingRoles) return;
+    try {
+      await act(`/api/v1/admin/clients/${editingRoles.clientId}/roles`, 'PUT', {
+        roles: roleRows.map((r, i) => ({ roleName: r.roleName.trim(), displayName: r.displayName.trim() || r.roleName.trim(), sortOrder: (i + 1) * 10 })),
+      });
+      toast.success(`${editingRoles.name}: roles saved. People are given them on the Users page.`);
+      setEditingRoles(null);
+    } catch (err) {
+      setRolesError(errorMessage(err));
     }
   }
 
@@ -193,6 +219,64 @@ export default function ClientsPage() {
         </div>
       </div>
 
+      <Modal
+        open={editingRoles !== null}
+        title={editingRoles ? `Roles for ${editingRoles.name}` : ''}
+        onClose={() => setEditingRoles(null)}
+        dismissible={!busy}
+        width={640}
+        footer={
+          <>
+            <button type="button" className="admin-btn secondary" onClick={() => setEditingRoles(null)} disabled={busy}>Cancel</button>
+            <button type="button" className="admin-btn" onClick={saveRoles} disabled={busy || roleRows.length === 0 || roleRows.some((r) => r.roleName.trim() === '')}>{busy ? 'Saving…' : 'Save roles'}</button>
+          </>
+        }
+      >
+        <p className="ui-modal-text">
+          The roles an administrator can give a person for this application. The <strong>name</strong> is what the application receives and must be one it
+          recognises; the label is only what the console shows. Once an application has roles, <strong>only people who hold one can sign in</strong> to it.
+          A role somebody holds cannot be removed until they are given something else.
+        </p>
+        <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
+          {roleRows.map((r, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                className="ui-input"
+                aria-label={`Role ${i + 1} name`}
+                placeholder="name, e.g. cashier"
+                value={r.roleName}
+                readOnly={!r.isNew}
+                onChange={(e) => setRoleRows(roleRows.map((x, j) => (j === i ? { ...x, roleName: e.target.value } : x)))}
+                style={{ flex: 1, fontFamily: 'ui-monospace, monospace', opacity: r.isNew ? 1 : 0.75 }}
+              />
+              <input
+                className="ui-input"
+                aria-label={`Role ${i + 1} label`}
+                placeholder="label shown in the console"
+                value={r.displayName}
+                onChange={(e) => setRoleRows(roleRows.map((x, j) => (j === i ? { ...x, displayName: e.target.value } : x)))}
+                style={{ flex: 1 }}
+              />
+              <button
+                type="button"
+                className="admin-btn secondary"
+                disabled={r.holders > 0}
+                title={r.holders > 0 ? `${r.holders} ${r.holders === 1 ? 'person holds' : 'people hold'} this role` : 'Remove this role'}
+                onClick={() => setRoleRows(roleRows.filter((_, j) => j !== i))}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          <div>
+            <button type="button" className="admin-btn secondary" onClick={() => setRoleRows([...roleRows, { roleName: '', displayName: '', holders: 0, isNew: true }])}>
+              Add a role
+            </button>
+          </div>
+        </div>
+        {rolesError ? <p className="ui-field-error" role="alert">{rolesError}</p> : null}
+      </Modal>
+
       {clients.map((c) => {
         const isProtected = protectedClients.includes(c.clientId);
         return (
@@ -243,6 +327,30 @@ export default function ClientsPage() {
                 </p>
               </div>
             </div>
+
+            {c.roles.length > 0 || (c.rolesEditable && !isProtected) ? (
+              <div style={{ marginTop: 18 }}>
+                <div className="sub" style={{ margin: '0 0 6px', fontWeight: 600 }}>Roles that can be given</div>
+                {c.roles.length === 0 ? (
+                  <p className="admin-hint" style={{ margin: 0 }}>None yet. Add roles to manage who may sign in to this application, and as what, from the Users page.</p>
+                ) : (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {c.roles.map((r) => (
+                      <span key={r.roleName} className="ui-chip" title={`${r.roleName}: ${r.holders} ${r.holders === 1 ? 'person holds' : 'people hold'} it`}>
+                        {r.displayName} · {r.holders}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {c.rolesEditable && !isProtected ? (
+                  <div style={{ marginTop: 8 }}>
+                    <button type="button" className="admin-btn secondary" disabled={busy} onClick={() => openRoles(c)}>
+                      <Pencil size={14} aria-hidden="true" /> Edit roles
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginTop: 18 }}>
               {[

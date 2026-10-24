@@ -108,11 +108,16 @@ export function buildUserListFilter(input: UserListFilterInput): UserListFilter 
 
   if (input.client && input.client !== 'portal') {
     const c = add(input.client);
+    // An application managed from the console (it has a role catalog; auth/app-roles.ts) is reached by holding one of its roles, whatever the
+    // group entitlements say; every other client keeps the group rule.
     clauses.push(
-      `(NOT EXISTS (SELECT 1 FROM idp_app_entitlements WHERE relying_party = ${c})
-        OR EXISTS (SELECT 1 FROM idp_user_groups ug
-                     JOIN idp_app_entitlements e ON e.group_dn = ug.group_dn
-                    WHERE ug.user_id = u.id AND e.relying_party = ${c}))`,
+      `(CASE WHEN ${c} NOT IN ('edams', 'gms', 'portal', 'idp-admin') AND EXISTS (SELECT 1 FROM idp_client_roles WHERE client_id = ${c})
+            THEN EXISTS (SELECT 1 FROM idp_client_user_roles cr WHERE cr.email = lower(u.email) AND cr.client_id = ${c})
+            ELSE (NOT EXISTS (SELECT 1 FROM idp_app_entitlements WHERE relying_party = ${c})
+                  OR EXISTS (SELECT 1 FROM idp_user_groups ug
+                               JOIN idp_app_entitlements e ON e.group_dn = ug.group_dn
+                              WHERE ug.user_id = u.id AND e.relying_party = ${c}))
+       END)`,
     );
   }
 

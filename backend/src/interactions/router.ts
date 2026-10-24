@@ -22,6 +22,10 @@ import { LoginBodySchema, PasswordChangeBodySchema, TotpBodySchema } from './sch
 import { logger } from '../logging/logger.js';
 import { GateBusyError } from '../infrastructure/workGate.js';
 import { consumeRecoveryCode, looksLikeTotp, normalizeRecoveryCode, recoveryCodesRemaining } from '../auth/recovery-codes.js';
+import { accountHasAppAccess } from '../auth/app-roles.js';
+
+/** What a person is told when an application managed from the console has not been given to them. */
+export const APP_ACCESS_DENIED_MESSAGE = 'You have not been given access to this application. Ask an administrator.';
 
 /** Verified-but-not-finished logins parked between steps (password change /
  *  MFA code), keyed by interaction uid. */
@@ -115,6 +119,17 @@ async function finalizeConsent(
     missingResourceScopes?: Record<string, string[]>;
   };
   const accountId = session!.accountId;
+  // An application managed from the console (auth/app-roles.ts) is only for people who hold a role in it. Every authorization of
+  // such an application reaches this step (oidc/provider.ts loadExistingGrant), so a removed role stops the next sign-in.
+  if (!(await accountHasAppAccess(accountId, String(params.client_id)))) {
+    logger.info({ accountId, clientId: String(params.client_id) }, '[idp:access] sign-in refused: the person holds no role in this application');
+    await provider.interactionFinished(
+      req, res,
+      { error: 'access_denied', error_description: APP_ACCESS_DENIED_MESSAGE },
+      { mergeWithLastSubmission: false },
+    );
+    return;
+  }
   let grant = details.grantId ? await provider.Grant.find(details.grantId) : undefined;
   if (!grant) grant = new provider.Grant({ accountId, clientId: String(params.client_id) });
   if (d.missingOIDCScope) grant.addOIDCScope(d.missingOIDCScope.join(' '));

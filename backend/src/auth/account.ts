@@ -22,6 +22,7 @@ import {
   GMS_ROLES_CLAIM,
   resolveClientRoleClaims,
 } from './client-role-claims.js';
+import { APP_ROLES_CLAIM, appRolesFor } from './app-roles.js';
 
 // idp_login_events is the only signal shared by both auth paths — the local
 // store has its own column-based lockout (auth/local-users.ts), but AD binds
@@ -219,10 +220,13 @@ export type AuthResult =
         | 'account_conflict';
     };
 
-async function claimsFor(user: LocalUser): Promise<AccountClaims> {
+async function claimsFor(user: LocalUser, clientId?: string): Promise<AccountClaims> {
   const name = [user.givenName, user.familyName].filter(Boolean).join(' ').trim();
   const roleClaims = await resolveClientRoleClaims(user.email, user.groups);
   const edamsRoles = roleClaims[EDAMS_ROLES_CLAIM];
+  // The roles this person holds in the application that is asking, when that application is managed from the console
+  // (auth/app-roles.ts). Left out for every other client, so no application sees another's roles.
+  const appRoles = clientId ? await appRolesFor(user.email, clientId) : undefined;
   return {
     sub: user.id,
     email: user.email,
@@ -238,15 +242,16 @@ async function claimsFor(user: LocalUser): Promise<AccountClaims> {
     // fabricated EMPLOYEE default here silently demoted real users whenever
     // DMS's internal API blipped. Absence lets DMS's own fallback chain run.
     ...(edamsRoles ? { [EDAMS_ROLES_CLAIM]: edamsRoles } : {}),
+    ...(appRoles ? { [APP_ROLES_CLAIM]: appRoles } : {}),
   };
 }
 
-function toAccount(user: LocalUser): Account {
+function toAccount(user: LocalUser, clientId?: string): Account {
   return {
     accountId: user.id,
     // oidc-provider calls this to populate id_token / userinfo per requested scope.
     async claims(): Promise<AccountClaims> {
-      return claimsFor(user);
+      return claimsFor(user, clientId);
     },
   };
 }
@@ -334,8 +339,10 @@ export async function authenticateUser(email: string, password: string, ip = '')
 }
 
 /** oidc-provider findAccount hook. */
-export const findAccount: FindAccount = async (_ctx, id) => {
+export const findAccount: FindAccount = async (ctx, id) => {
   const user = await getLocalUserById(id);
   if (!user || !user.isActive) return undefined;
-  return toAccount(user);
+  // The client that is asking (token and userinfo requests carry it); absent during the sign-in screens, where no claims are built.
+  const clientId = (ctx as { oidc?: { client?: { clientId?: string } } } | undefined)?.oidc?.client?.clientId;
+  return toAccount(user, clientId);
 };

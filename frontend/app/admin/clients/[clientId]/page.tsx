@@ -16,11 +16,15 @@ interface ClientUser {
   isActive: boolean;
   lastLoginAt: string | null;
   matchedGroups: string[];
+  /** The roles the person holds in this application (managed applications only). */
+  roles: string[];
 }
 
 interface ClientUsersData {
   clientId: string;
   name: string;
+  /** Opened by holding one of its roles, not through a group. */
+  managed: boolean;
   users: ClientUser[];
 }
 
@@ -64,8 +68,17 @@ export default function ClientUsersPage() {
         <div>
           <h1>{data.name}</h1>
           <p>
-            {data.users.length} {data.users.length === 1 ? 'person' : 'people'} may open this application: through a group it is
-            granted to under Groups &gt; Access, or everybody who is signed in if no group has been given access.
+            {data.managed ? (
+              <>
+                {data.users.length} {data.users.length === 1 ? 'person holds' : 'people hold'} a role in this application, and only they can sign in to it.
+                Give or take away a role on the person&apos;s page; the roles on offer are edited under Applications.
+              </>
+            ) : (
+              <>
+                {data.users.length} {data.users.length === 1 ? 'person' : 'people'} may open this application: through a group it is
+                granted to under Groups &gt; Access, or everybody who is signed in if no group has been given access.
+              </>
+            )}
           </p>
         </div>
       </div>
@@ -87,7 +100,7 @@ export default function ClientUsersPage() {
               <tr>
                 <th>Email</th>
                 <th>Name</th>
-                <th>Through</th>
+                <th>{data.managed ? 'Role' : 'Through'}</th>
                 <th>Status</th>
                 <th>Last sign-in</th>
                 <th><span className="admin-visually-hidden">Open</span></th>
@@ -99,7 +112,11 @@ export default function ClientUsersPage() {
                   <td>{user.email}</td>
                   <td>{[user.givenName, user.familyName].filter(Boolean).join(' ') || '—'}</td>
                   <td style={{ fontSize: '12px', color: 'var(--muted)' }}>
-                    {user.matchedGroups.length > 0 ? user.matchedGroups.map((dn) => <div key={dn} style={{ marginBottom: '2px' }}>{dn}</div>) : 'open to everyone'}
+                    {data.managed
+                      ? (user.roles ?? []).join(', ')
+                      : user.matchedGroups.length > 0
+                        ? user.matchedGroups.map((dn) => <div key={dn} style={{ marginBottom: '2px' }}>{dn}</div>)
+                        : 'open to everyone'}
                   </td>
                   <td>
                     <span className={`admin-badge ${user.isActive ? 'on' : 'off'}`}>{user.isActive ? 'Active' : 'Disabled'}</span>

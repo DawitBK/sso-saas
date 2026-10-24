@@ -73,6 +73,22 @@ interface HistoryEntry {
   detail: unknown;
   created_at: string;
 }
+interface ManagedApp {
+  clientId: string;
+  name: string;
+  roles: Array<{ roleName: string; displayName: string; sortOrder: number }>;
+}
+
+/** The role shown for each managed application: the person's first role in catalog order, or "" for none (no access). */
+function initialAppRoles(d: Pick<UserDetailData, "managedApps" | "appRoles">): Record<string, string> {
+  return Object.fromEntries(
+    (d.managedApps ?? []).map((app) => {
+      const held = new Set(d.appRoles?.[app.clientId] ?? []);
+      return [app.clientId, app.roles.find((r) => held.has(r.roleName))?.roleName ?? ""];
+    }),
+  );
+}
+
 interface UserDetailData {
   user: User;
   /** The person's own (personal) group: the target of the App access control below. */
@@ -80,6 +96,10 @@ interface UserDetailData {
   /** Apps this person is entitled to open from the portal, through their personal group. */
   entitledApps: string[];
   appCatalog: Array<{ rp: string; label: string }>;
+  /** Applications managed from the console: a role catalog each. No role means no access. */
+  managedApps: ManagedApp[];
+  /** The roles this person holds in each managed application (client id -> role names). */
+  appRoles: Record<string, string[]>;
   groups: string[];
   knownGroups: string[];
   isAdmin: boolean;
@@ -135,6 +155,8 @@ export default function UserDetailPage() {
   const [saving, setSaving] = useState(false);
   // null = "as saved on the server"; a Set while the administrator is editing the App access checkboxes.
   const [appSel, setAppSel] = useState<Set<string> | null>(null);
+  // The role chosen for each managed application ("" = no access); filled from the server on every load.
+  const [appRoleSel, setAppRoleSel] = useState<Record<string, string>>({});
 
   // See the matching note in admin/groups/detail: `load` must not raise the
   // loading flag synchronously, because it is called from an effect and
@@ -158,6 +180,7 @@ export default function UserDetailPage() {
             ),
           );
           setGmsRole(body.access.gmsRole ?? "");
+          setAppRoleSel(initialAppRoles(body));
           setOfficeId(body.access.officeId ? String(body.access.officeId) : "");
           setIsAdminChecked(body.isAdmin);
           setDmsPermsChecked(new Set(body.dmsPermissions?.effective ?? []));
@@ -219,6 +242,11 @@ export default function UserDetailPage() {
 
   const { user } = data;
   const officeScoped = data.gmsOfficeScopedRoles.includes(gmsRole);
+  // Applications with their own roles are opened by giving the person a role (the card below), not by a checkbox.
+  const managedApps = data.managedApps ?? [];
+  const managedIds = new Set(managedApps.map((m) => m.clientId));
+  const savedAppRoles = initialAppRoles(data);
+  const changedApps = managedApps.filter((m) => (appRoleSel[m.clientId] ?? "") !== (savedAppRoles[m.clientId] ?? ""));
   const departmentsByOrgUnit = data.dmsDepartments.reduce<
     Record<string, DmsDepartment[]>
   >((groups, department) => {
@@ -510,7 +538,7 @@ export default function UserDetailPage() {
           return (
             <>
               <div className="admin-checks" style={{ flexWrap: "wrap" }}>
-                {data.appCatalog.map((a) => (
+                {data.appCatalog.filter((a) => !managedIds.has(a.rp)).map((a) => (
                   <label key={a.rp}>
                     <input
                       type="checkbox"
@@ -545,6 +573,74 @@ export default function UserDetailPage() {
           );
         })()}
       </div>
+
+      {managedApps.length > 0 && (
+        <>
+          <h2 className="admin-section-title">
+            Application roles{" "}
+            <span style={{ textTransform: "none", fontWeight: 400 }}>
+              (applied at every sign-in)
+            </span>
+          </h2>
+          <div className="admin-card">
+            <p className="sub" style={{ margin: "0 0 14px" }}>
+              What this person can do in each application, decided here. <strong>No access</strong> means the application
+              refuses their sign-in and it does not appear on their launcher. When a role changes, the person is signed out
+              of that application so the change applies at once. The roles on offer for an application are edited on its page
+              under Clients.
+            </p>
+            <div style={{ display: "flex", gap: "10px", alignItems: "flex-end", flexWrap: "wrap" }}>
+              {managedApps.map((app) => {
+                const held = data.appRoles?.[app.clientId] ?? [];
+                return (
+                  <div key={app.clientId}>
+                    <label className="admin-label" htmlFor={`app_role_${app.clientId}`}>
+                      {app.name}
+                    </label>
+                    <select
+                      id={`app_role_${app.clientId}`}
+                      value={appRoleSel[app.clientId] ?? ""}
+                      disabled={saving || data.isSelf}
+                      onChange={(e) => setAppRoleSel({ ...appRoleSel, [app.clientId]: e.target.value })}
+                    >
+                      <option value="">— No access —</option>
+                      {app.roles.map((r) => (
+                        <option key={r.roleName} value={r.roleName}>
+                          {r.displayName}
+                        </option>
+                      ))}
+                    </select>
+                    {held.length > 1 && (
+                      <p className="admin-hint" style={{ margin: "4px 0 0" }}>
+                        Holds {held.length} roles; the first is shown. Changing it replaces them.
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                className="admin-btn"
+                disabled={saving || data.isSelf || changedApps.length === 0}
+                title={data.isSelf ? "You cannot change your own application access; ask another administrator." : undefined}
+                onClick={() =>
+                  post(
+                    `/api/v1/admin/users/${id}/app-roles`,
+                    {
+                      app_roles: Object.fromEntries(
+                        changedApps.map((m) => [m.clientId, appRoleSel[m.clientId] ? [appRoleSel[m.clientId]] : []]),
+                      ),
+                    },
+                    "Application roles saved",
+                  )
+                }
+              >
+                {changedApps.length > 0 ? "Save application roles" : "No changes to save"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       <h2 className="admin-section-title">
         System access assigned by SSO{" "}

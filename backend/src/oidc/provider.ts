@@ -15,9 +15,11 @@ import Provider, { type Configuration } from 'oidc-provider';
 import { hasLogoutIntent, LOGOUT_INTENT_COOKIE } from '../auth/logout-intent.js';
 import { AD_GROUPS_CLAIM, IDP_CONFIG } from '../config.js';
 import { EDAMS_ROLES_CLAIM, GMS_ROLES_CLAIM } from '../auth/client-role-claims.js';
+import { accountHasAppAccess, APP_ROLES_CLAIM } from '../auth/app-roles.js';
 import { postgresAdapterFactory } from '../adapters/postgres.js';
 import { findAccount } from '../auth/account.js';
 import { seedClients } from './clients.js';
+import { seedClientRoles } from './client-roles-config.js';
 import { loadSigningJwks } from '../jwks.js';
 import { pool } from '../db/pool.js';
 import { revokeAllSessions } from '../auth/revoke.js';
@@ -27,6 +29,7 @@ import { pinEndSessionOrigin } from './end-session-origin.js';
 
 export async function buildProvider(): Promise<Provider> {
   await seedClients();
+  await seedClientRoles();
   const jwks = await loadSigningJwks();
 
   const configuration: Configuration = {
@@ -71,6 +74,10 @@ export async function buildProvider(): Promise<Provider> {
       ad_groups: [AD_GROUPS_CLAIM],
       gms_roles: [GMS_ROLES_CLAIM],
       edams_roles: [EDAMS_ROLES_CLAIM],
+      // The roles the person holds in the application that asks, for applications managed from the console (auth/app-roles.ts).
+      // Same separation as the two above: only a client whose scope allowlist includes `app_roles` gets it, and the value is
+      // always that client's own roles.
+      app_roles: [APP_ROLES_CLAIM],
     },
 
     // DMS reads claims straight from the id_token (it does not call /userinfo),
@@ -78,6 +85,20 @@ export async function buildProvider(): Promise<Provider> {
     conformIdTokenClaims: false,
 
     findAccount,
+
+    /**
+     * oidc-provider's default, with one addition: an application managed from the console (auth/app-roles.ts) is checked at EVERY
+     * authorization, not only the first. When the person no longer holds a role in it there is no usable grant, so the request
+     * goes to the consent step (interactions/router.ts), which refuses it with access_denied. Without this a person whose access was
+     * removed would keep getting silent sign-ins for as long as their old grant lived.
+     */
+    async loadExistingGrant(ctx) {
+      const clientId = ctx.oidc.client?.clientId;
+      const accountId = ctx.oidc.session?.accountId;
+      if (clientId && accountId && !(await accountHasAppAccess(accountId, clientId))) return undefined;
+      const grantId = ctx.oidc.result?.consent?.grantId || (clientId ? ctx.oidc.session?.grantIdFor(clientId) : undefined);
+      return grantId ? ctx.oidc.provider.Grant.find(grantId) : undefined;
+    },
 
     features: {
       devInteractions: { enabled: false }, // we ship real views
