@@ -10,7 +10,7 @@ import { ErrorState, PageSkeleton } from '@shared/ui/States';
 
 type State = 'ok' | 'degraded' | 'down' | 'off';
 interface Check { state: State; detail?: string }
-interface Peer { name: 'dms' | 'gms'; state: State; checkedAt: string | null; latencyMs: number | null; detail?: string }
+interface Peer { name: string; label: string; state: State; checkedAt: string | null; latencyMs: number | null; detail?: string }
 interface Job { name: string; everySeconds: number; lastRunAt: string | null; lastOkAt: string | null; lastError: string | null; runs: number; failures: number; overdue: boolean }
 interface Breaker { name: string; state: 'closed' | 'open' | 'half-open'; consecutiveFailures: number; shortCircuited: number; lastFailureAt: string | null; lastSuccessAt: string | null; retryAt: string | null }
 interface SystemData {
@@ -37,7 +37,7 @@ const CHECKS: Record<string, { title: string; meaning: string }> = {
   gms: { title: 'GMS reachability', meaning: 'Whether the guest system answers. The GMS tile and its bridge need it.' },
   dmsRoleLookup: { title: 'DMS role lookup', meaning: 'Fetches a person’s DMS roles during sign-in. After repeated failures it pauses so sign-in stays fast.' },
   totpKey: { title: 'Authenticator secrets', meaning: 'Whether stored two-factor secrets can be decrypted with the current key. A mismatch locks enrolled people out.' },
-  notifications: { title: 'Sign-out notifications', meaning: 'When someone is signed out or disabled, DMS and GMS are told. If one was down, SSO keeps retrying for 48 hours; this shows when something is stuck.' },
+  notifications: { title: 'Sign-out notifications', meaning: 'When someone is signed out, disabled or has their roles changed, every application they use is told. If one was down, SSO keeps retrying for 48 hours; this shows when something is stuck.' },
   auditChain: { title: 'Audit log integrity', meaning: 'Whether the administrative audit log still matches its own fingerprints. Checked every six hours; “Needs attention” means an entry was changed or removed and nobody has explained it yet. Open Audit Log and use Verify integrity.' },
   eventLoop: { title: 'Responsiveness', meaning: 'Whether this process is answering promptly. A long stall means it is overloaded or blocked.' },
 };
@@ -128,7 +128,11 @@ export default function SystemPage() {
       <h2 className="admin-section-title">Checks</h2>
       <div className="health-grid">
         {Object.entries(d.readiness.checks).map(([key, check]) => {
-          const meta = CHECKS[key] ?? { title: key, meaning: '' };
+          // An application with a health address has a check named app:<client id>; its name comes from the connected-systems list.
+          const appName = key.startsWith('app:') ? d.peers.find((p) => p.name === key.slice(4))?.label ?? key.slice(4) : null;
+          const meta = CHECKS[key] ?? (appName
+            ? { title: `${appName} reachability`, meaning: `Whether ${appName} answers. SSO signs people in without it, but they cannot use ${appName} while it is down.` }
+            : { title: key, meaning: '' });
           return (
             <div key={key} className="health-card">
               <header>
@@ -152,7 +156,7 @@ export default function SystemPage() {
           <tbody>
             {d.peers.map((p) => (
               <tr key={p.name}>
-                <td style={{ fontWeight: 600 }}>{p.name === 'dms' ? 'DMS' : 'GMS'}</td>
+                <td style={{ fontWeight: 600 }}>{p.label}</td>
                 <td><span className={`ui-dot ${p.state}`} aria-hidden="true" /> {STATE_LABEL[p.state]}</td>
                 <td>{p.latencyMs === null ? '—' : `${p.latencyMs} ms`}</td>
                 <td>{timeAgo(p.checkedAt)}</td>
@@ -255,6 +259,7 @@ export default function SystemPage() {
               ['Active Directory', String(d.config.activeDirectory)],
               ['DMS connection', d.config.dms ? 'On' : 'Off'],
               ['GMS bridge', d.config.gmsBridge ? 'On' : 'Off'],
+              ['Other applications watched', d.peers.filter((p) => p.name !== 'dms' && p.name !== 'gms').length],
               ['Redis', String(d.config.redis)],
               ['Sign-in lockout', d.config.lockoutEnabled ? 'On' : 'Off'],
               ['Two-factor required for administrators', d.config.adminTwoFactorRequired ? 'Yes' : 'No'],

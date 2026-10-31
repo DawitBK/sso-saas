@@ -35,7 +35,7 @@ interface ResetRequest { id: string; userId: string; email: string; name: string
 interface ResetRequestsData { requests: ResetRequest[]; csrf: string }
 
 interface ClientsData { clients: Array<{ clientId: string; name: string }> }
-interface RoleCatalog { dmsRoles: string[]; gmsRoles: string[] }
+interface RoleCatalog { dmsRoles: string[]; gmsRoles: string[]; appRoles: Array<{ clientId: string; name: string; roles: Array<{ roleName: string; displayName: string }> }> }
 interface BulkResult { action: string; results: Array<{ id: string; email: string | null; outcome: 'changed' | 'skipped' | 'refused'; message?: string }>; summary: { changed: number; skipped: number; refused: number; notFullyDark: number } }
 
 type FilterKey = 'q' | 'client' | 'role' | 'status' | 'source' | 'mfa';
@@ -210,7 +210,7 @@ function UsersPageInner() {
     const wording = {
       disable: { title: `Disable ${ids.length} ${ids.length === 1 ? 'person' : 'people'}?`, body: 'They are signed out of every system now and cannot sign in until they are enabled again. You cannot disable your own account.', label: 'Disable', danger: true },
       enable: { title: `Enable ${ids.length} ${ids.length === 1 ? 'person' : 'people'}?`, body: 'They can sign in again. Their access is whatever their groups give them.', label: 'Enable', danger: false },
-      'sign-out': { title: `Sign ${ids.length} ${ids.length === 1 ? 'person' : 'people'} out everywhere?`, body: 'Every session and token they hold in SSO, DMS and GMS ends now. They can sign in again straight away.', label: 'Sign out', danger: true },
+      'sign-out': { title: `Sign ${ids.length} ${ids.length === 1 ? 'person' : 'people'} out everywhere?`, body: 'Every session and token they hold in SSO and in every application that signs in through it ends now. They can sign in again straight away.', label: 'Sign out', danger: true },
     }[action];
     const ok = await confirm({
       title: wording.title,
@@ -287,6 +287,11 @@ function UsersPageInner() {
               {(catalog.data?.gmsRoles.length ?? 0) > 0 && (
                 <optgroup label="GMS">{catalog.data?.gmsRoles.map((r) => <option key={`gms:${r}`} value={`gms:${r}`}>{r}</option>)}</optgroup>
               )}
+              {(catalog.data?.appRoles ?? []).map((app) => (
+                <optgroup key={app.clientId} label={app.name}>
+                  {app.roles.map((r) => <option key={`app:${app.clientId}:${r.roleName}`} value={`app:${app.clientId}:${r.roleName}`}>{r.displayName}</option>)}
+                </optgroup>
+              ))}
             </>)}
           {select('Status', 'status', [['active', 'Active'], ['inactive', 'Disabled']], 'Any status')}
           {select('Account type', 'source', [['local', 'Local'], ['ad', 'Active Directory']], 'Any type')}

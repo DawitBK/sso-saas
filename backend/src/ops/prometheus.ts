@@ -141,14 +141,14 @@ export function renderPrometheus(input: { platform: Record<string, number>; syst
   e.metric('sso_password_checks_completed_total', 'counter', 'Password checks completed since start.', [{ value: s.passwordChecks.completed }]);
   e.metric('sso_password_checks_refused_total', 'counter', 'Sign-ins turned away as busy since start (a rising value means sign-in is being flooded).', [{ value: s.passwordChecks.refused }]);
 
-  e.metric('sso_notifications_pending', 'gauge', 'Sign-out notices to DMS/GMS still waiting to get through.', [{ value: s.notifications.pending }]);
+  e.metric('sso_notifications_pending', 'gauge', 'Sign-out notices to DMS, GMS and other applications still waiting to get through.', [{ value: s.notifications.pending }]);
   e.metric('sso_notifications_oldest_pending_seconds', 'gauge', 'Age of the oldest pending notice (0 when none).', [{ value: s.notifications.oldestPendingSeconds ?? 0 }]);
   e.metric('sso_notifications_abandoned_7d', 'gauge', 'Notices given up on in the last 7 days.', [{ value: s.notifications.abandonedLast7Days }]);
 
   e.metric(
     'sso_peer_up',
     'gauge',
-    '1 when DMS/GMS answered the last probe (omitted when switched off).',
+    '1 when the system (DMS, GMS or another application with a health address) answered the last probe (omitted when switched off).',
     s.peers.filter((x) => x.state !== 'off').map((x) => ({ labels: { peer: x.name }, value: x.state === 'ok' ? 1 : 0 })),
   );
   e.metric(

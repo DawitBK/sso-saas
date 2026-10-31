@@ -29,6 +29,15 @@ describe('PRODUCT_CLIENTS_JSON: extra applications that sign in through this IdP
     });
   });
 
+  it('an optional health_uri is kept, and must be an http(s) address', () => {
+    const [c] = parseProductClients(JSON.stringify([client({ health_uri: 'http://retail:16101/health/ready' })]));
+    expect(c.health_uri).toBe('http://retail:16101/health/ready');
+    expect(parseProductClients(JSON.stringify([client()]))[0]).not.toHaveProperty('health_uri');
+    for (const bad of ['', 'ftp://x/y', 'javascript:alert(1)', 5]) {
+      expect(() => parseProductClients(JSON.stringify([client({ health_uri: bad })]))).toThrow(/health_uri must be an http\(s\) address/);
+    }
+  });
+
   it('an optional backchannel_logout_uri is kept, and must be an http(s) address', () => {
     const [c] = parseProductClients(JSON.stringify([client({ backchannel_logout_uri: 'http://127.0.0.1:16101/api/v1/auth/backchannel-logout' })]));
     expect(c.backchannel_logout_uri).toBe('http://127.0.0.1:16101/api/v1/auth/backchannel-logout');

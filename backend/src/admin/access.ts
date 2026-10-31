@@ -14,7 +14,7 @@ import { IDP_CONFIG } from "../config.js";
 import { logger } from "../logging/logger.js";
 import { pool } from "../db/pool.js";
 import { revokeAllSessions } from "../auth/revoke.js";
-import { isRoleManagedClient } from "../auth/app-roles.js";
+import { isRoleManagedClient, managedCatalog, type ManagedClientCatalog } from "../auth/app-roles.js";
 import { writeAudit } from "./audit.js";
 import {
   listDmsRoleNames,
@@ -55,13 +55,16 @@ export async function roleCatalog(): Promise<{
   dmsRoles: string[];
   gmsRoles: string[];
   gmsOfficeScopedRoles: string[];
+  /** Every other application managed from the console, with the roles it offers (the Users list's role filter draws one group per application). */
+  appRoles: ManagedClientCatalog[];
 }> {
-  const [dmsRoles, gmsRoles, gmsOfficeScopedRoles] = await Promise.all([
+  const [dmsRoles, gmsRoles, gmsOfficeScopedRoles, appRoles] = await Promise.all([
     listDmsRoleNames(),
     listGmsRoleNames(),
     listGmsOfficeScopedRoleNames(),
+    managedCatalog(),
   ]);
-  return { dmsRoles, gmsRoles, gmsOfficeScopedRoles };
+  return { dmsRoles, gmsRoles, gmsOfficeScopedRoles, appRoles };
 }
 
 /** The apps a group can be entitled to. Derived from portal/catalog.ts's APP_REGISTRY, the

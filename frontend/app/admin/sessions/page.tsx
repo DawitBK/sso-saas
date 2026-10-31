@@ -30,7 +30,9 @@ interface SessionsData {
   pagination: { page: number; pageSize: number; total: number; totalPages: number };
 }
 
-const CLIENT_NAME: Record<string, string> = { edams: 'DMS', gms: 'GMS', portal: 'Portal' };
+// The built-in systems keep their short names; every other application is shown by the name it is registered under (read from the console's applications list).
+const BUILT_IN_NAME: Record<string, string> = { edams: 'DMS', gms: 'GMS', portal: 'Portal' };
+interface ClientsList { clients: Array<{ clientId: string; name: string }> }
 
 export default function SessionsPage() {
   return (
@@ -69,6 +71,9 @@ function SessionsPageInner() {
     staleTime: 0,
   });
 
+  const clients = useQuery({ queryKey: ['admin-clients'], queryFn: () => adminFetch<ClientsList>('/api/v1/admin/clients'), staleTime: 60_000, retry: 0 });
+  const clientName = (id: string): string => BUILT_IN_NAME[id] ?? clients.data?.clients.find((c) => c.clientId === id)?.name ?? id;
+
   const killSession = useMutation({
     mutationFn: (sessionId: string) =>
       adminFetch('/api/v1/admin/sessions/revoke', { method: 'POST', body: { session_id: sessionId, csrf: query.data?.csrf } }),
@@ -81,14 +86,14 @@ function SessionsPageInner() {
   });
 
   // POST /api/v1/admin/sessions/revoke is account-wide, not per-session: tokens and grants are only ever tracked per account, never
-  // per session. An administrator killing what looks like one stale desktop session also signs that person out of DMS, GMS and the
-  // portal on every device, so the confirmation says exactly that.
+  // per session. An administrator killing what looks like one stale desktop session also signs that person out of every application
+  // and the portal on every device, so the confirmation says exactly that.
   async function handleKill(s: Session) {
     const ok = await confirm({
       title: `Sign ${s.email ?? 'this person'} out everywhere?`,
       message: (
         <>
-          <p>This ends the whole account, not only the row you clicked: every single sign-on session, access and refresh token, grant and the GMS bridge session, on every device.</p>
+          <p>This ends the whole account, not only the row you clicked: every single sign-on session, access and refresh token, grant and the GMS bridge session, in DMS, GMS and every other application that signs in here, on every device.</p>
           <p>They can sign in again straight away. One audit entry is written.</p>
         </>
       ),
@@ -155,7 +160,7 @@ function SessionsPageInner() {
                           <span style={{ color: 'var(--muted)', fontSize: 12 }}>none yet</span>
                         ) : (
                           <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>
-                            {session.clients.map((c) => <span key={c} className="ui-chip">{CLIENT_NAME[c] ?? c}</span>)}
+                            {session.clients.map((c) => <span key={c} className="ui-chip">{clientName(c)}</span>)}
                           </span>
                         )}
                       </td>

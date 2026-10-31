@@ -5,10 +5,11 @@
  * and mirror environments set nothing). Every secret and address is explicit: there are no fallbacks, a malformed list is a startup error, and the
  * production safety check (assertProdSafeDefaults) covers these clients exactly like the built-in ones (no dev secret, no localhost address).
  *
- *   PRODUCT_CLIENTS_JSON  [{ "client_id", "client_secret", "redirect_uris": [...], "post_logout_redirect_uris": [...], "name", "backchannel_logout_uri"? }]
+ *   PRODUCT_CLIENTS_JSON  [{ "client_id", "client_secret", "redirect_uris": [...], "post_logout_redirect_uris": [...], "name", "backchannel_logout_uri"?, "health_uri"? }]
  *   PRODUCT_APPS_JSON     [{ "rp", "label", "name", "url" }]   one launcher tile per application (rp = the client id)
  *   MOS_ENABLED=true      also registers the client "mos" (MOS_CLIENT_SECRET, MOS_REDIRECT_URIS, MOS_LOGOUT_URIS, all required) and, when MOS_PORTAL_URL is set,
- *                         its tile; MOS_BACKCHANNEL_LOGOUT_URI (optional) is where it is told that someone signed out; see config.ts and portal/catalog.ts
+ *                         its tile; MOS_BACKCHANNEL_LOGOUT_URI (optional) is where it is told that someone signed out; MOS_HEALTH_URL (optional) is
+ *                         probed for the System page; see config.ts and portal/catalog.ts
  */
 
 export interface ProductClient {
@@ -20,6 +21,8 @@ export interface ProductClient {
   name: string;
   /** Where this IdP POSTs a signed logout token when the person's SSO session ends (server to server, so loopback is fine). Optional. */
   backchannel_logout_uri?: string;
+  /** An address the IdP probes (GET, server to server) to show on its System page whether the application answers. Optional. */
+  health_uri?: string;
 }
 
 export interface ProductTile {
@@ -65,6 +68,9 @@ export function parseProductClients(raw: string | undefined): ProductClient[] {
     if (c.backchannel_logout_uri !== undefined && !(isText(c.backchannel_logout_uri) && /^https?:\/\//i.test(c.backchannel_logout_uri))) {
       throw new Error(`${where}: backchannel_logout_uri must be an http(s) address`);
     }
+    if (c.health_uri !== undefined && !(isText(c.health_uri) && /^https?:\/\//i.test(c.health_uri))) {
+      throw new Error(`${where}: health_uri must be an http(s) address`);
+    }
     return {
       client_id: c.client_id,
       client_secret: c.client_secret,
@@ -73,6 +79,7 @@ export function parseProductClients(raw: string | undefined): ProductClient[] {
       post_logout_redirect_uris: c.post_logout_redirect_uris,
       name: c.name,
       ...(c.backchannel_logout_uri !== undefined ? { backchannel_logout_uri: c.backchannel_logout_uri } : {}),
+      ...(c.health_uri !== undefined ? { health_uri: c.health_uri } : {}),
     };
   });
 }

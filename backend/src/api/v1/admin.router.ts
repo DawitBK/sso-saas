@@ -29,7 +29,7 @@ import { runAuditChainCheck } from "../../ops/auditChain.js";
 import { PASSWORD_MAX_LENGTH, newPasswordProblem } from "../../auth/password-policy.js";
 import { USER_LIMITS, identityProblems, parseOfficeId } from "../../admin/user-input.js";
 import { applyAppRoles, parseAppRolesInput } from "../../admin/app-access.js";
-import { appAccessOf, isRoleManagedClient, managedCatalog } from "../../auth/app-roles.js";
+import { appAccessOf, isRoleManagedClient, managedCatalog, managedClientIds } from "../../auth/app-roles.js";
 import { closeRequestsForUser } from "../../auth/reset-requests.js";
 import { IDP_CONFIG } from "../../config.js";
 import { pool } from "../../db/pool.js";
@@ -1410,7 +1410,7 @@ export function adminApiRouter(): Router {
           return;
         }
 
-        const [{ rows: members }, { rows: entRows }, accessState, catalog] =
+        const [{ rows: members }, { rows: entRows }, accessState, catalog, managedIds] =
           await Promise.all([
             pool.query<{ id: string; email: string }>(
               "SELECT u.id, u.email FROM idp_user_groups g JOIN idp_users u ON u.id = g.user_id WHERE g.group_dn = $1 AND NOT u.is_platform_admin ORDER BY u.email",
@@ -1422,13 +1422,16 @@ export function adminApiRouter(): Router {
             ),
             getAccess(dn, undefined, rid(res)),
             roleCatalog(),
+            managedClientIds(),
           ]);
 
         sendOk(res, {
           dn,
           members,
           entitled: [...entRows.map((r) => r.relying_party)],
-          apps: APPS,
+          // `managed`: an application whose access is set per person (auth/app-roles.ts); a group entitlement has no effect on it, so the page
+          // shows it as such instead of offering a tick that does nothing.
+          apps: APPS.map((a) => ({ ...a, managed: managedIds.has(a.rp) })),
           // Roles this group currently asserts (0, 1 or many) vs. the full
           // catalog of role names the multi-select picker offers.
           selectedDmsRoles: accessState.dmsRoles,
@@ -2063,22 +2066,20 @@ export function adminApiRouter(): Router {
 
   /**
    * GET /api/v1/admin/role-catalog
-   * Get available roles for DMS/GMS
+   * Get available roles for DMS, GMS and every other application managed from the console
    */
   router.get(
     "/role-catalog",
     async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const [dmsRoles, gmsRoles, gmsOfficeScopedRoles] = await Promise.all([
-          listDmsRoleNames(),
-          listGmsRoleNames(),
-          listGmsOfficeScopedRoleNames(),
-        ]);
+        const { dmsRoles, gmsRoles, gmsOfficeScopedRoles, appRoles } = await roleCatalog();
 
         sendOk(res, {
           dmsRoles,
           gmsRoles,
           gmsOfficeScopedRoles,
+          // The roles of every other application managed from the console, one entry per application (the Users list's role filter).
+          appRoles,
           dmsConnected: Boolean(IDP_CONFIG.dmsInternalApiKey),
           // Whether the create-user form offers "IdP administrator" (the platform administrator's call alone).
           canGrantIdpAdmin: await isPlatformAdminSession((req as any).adminSession as PortalSession),

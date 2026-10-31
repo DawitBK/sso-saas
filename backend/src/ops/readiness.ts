@@ -3,8 +3,8 @@
  * the admin console's System page.
  *
  *   not_ready  a check SSO cannot work without has failed: the database, or no active signing key. HTTP 503.
- *   degraded   SSO is signing people in, but something around it is unwell: a pending migration, Redis (when configured), DMS or
- *              GMS unreachable, the DMS role lookup paused by its circuit breaker, a TOTP key mismatch, a stalled event loop.
+ *   degraded   SSO is signing people in, but something around it is unwell: a pending migration, Redis (when configured), DMS, GMS
+ *              or another registered application unreachable, the DMS role lookup paused by its circuit breaker, a TOTP key mismatch, a stalled event loop.
  *              HTTP 200 on purpose: the uptime monitor and any load balancer must keep sending traffic here.
  *   ready      everything is fine.
  *
@@ -108,11 +108,11 @@ async function redisCheck(): Promise<Check> {
   }
 }
 
-function peerCheck(name: 'dms' | 'gms'): Check {
+function peerCheck(name: string): Check {
   const peer = getPeerStatuses().find((p) => p.name === name);
   if (!peer || peer.state === 'off') return { state: 'off', detail: peer?.detail };
   if (peer.state === 'ok') return { state: 'ok' };
-  // SSO signs people in without DMS or GMS, so an unreachable peer is a degraded SSO, never a not-ready one.
+  // SSO signs people in without DMS, GMS or any other application, so an unreachable peer is a degraded SSO, never a not-ready one.
   return { state: 'degraded', detail: peer.detail ?? 'not reachable' };
 }
 
@@ -124,12 +124,12 @@ function dmsRolesCheck(): Check {
   return { state: 'degraded', detail: `DMS role lookup is ${snap.state} after ${snap.consecutiveFailures} failures; sign-ins omit the DMS roles until it answers.` };
 }
 
-/** Sign-out notifications to DMS/GMS that have not got through (ops/notificationOutbox.ts). */
+/** Sign-out notifications to DMS, GMS and the other applications that have not got through (ops/notificationOutbox.ts). */
 async function notificationsCheck(): Promise<Check> {
   try {
     const s = await withTimeout(outboxStats(), DB_TIMEOUT_MS, 'notifications');
-    if (s.abandonedLast7Days > 0) return { state: 'degraded', detail: `${s.abandonedLast7Days} sign-out notification(s) to DMS or GMS were given up on after 48 hours; end those sessions there by hand.` };
-    if (s.pending > 0 && (s.oldestPendingSeconds ?? 0) > 900) return { state: 'degraded', detail: `${s.pending} sign-out notification(s) to DMS or GMS are still waiting to get through (the oldest for ${Math.round((s.oldestPendingSeconds ?? 0) / 60)} minutes).` };
+    if (s.abandonedLast7Days > 0) return { state: 'degraded', detail: `${s.abandonedLast7Days} sign-out notification(s) to applications (DMS, GMS or another) were given up on after 48 hours; end those sessions there by hand.` };
+    if (s.pending > 0 && (s.oldestPendingSeconds ?? 0) > 900) return { state: 'degraded', detail: `${s.pending} sign-out notification(s) to applications are still waiting to get through (the oldest for ${Math.round((s.oldestPendingSeconds ?? 0) / 60)} minutes).` };
     return { state: 'ok' };
   } catch {
     // Table missing (migration 020 not applied yet) or unreadable: the schema check already reports a pending migration.
@@ -158,6 +158,8 @@ export async function collectReadiness(): Promise<Readiness> {
     redis,
     dms: peerCheck('dms'),
     gms: peerCheck('gms'),
+    // One check per other application with a health address, named `app:<client id>` (the console reads the label from the peers list).
+    ...Object.fromEntries(getPeerStatuses().filter((p) => p.name !== 'dms' && p.name !== 'gms').map((p) => [`app:${p.name}`, peerCheck(p.name)])),
     dmsRoleLookup: dmsRolesCheck(),
     notifications,
     totpKey: totpKeyCheck(),

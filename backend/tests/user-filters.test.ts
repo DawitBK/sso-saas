@@ -1,4 +1,4 @@
-import { buildUserListFilter, parseRoleFilter, userOrderBy } from '../src/admin/services/user-filters.js';
+import { buildUserListFilter, formatRoleFilter, parseRoleFilter, userOrderBy } from '../src/admin/services/user-filters.js';
 
 const ADMIN_GROUP = 'CN=EDAMS_Admins,OU=Groups,DC=example,DC=com';
 const base = { adminGroup: ADMIN_GROUP };
@@ -8,6 +8,20 @@ describe('parseRoleFilter', () => {
     expect(parseRoleFilter('idp:admin')).toEqual({ system: 'idp', role: 'admin' });
     expect(parseRoleFilter('dms:RECORDS_OFFICER')).toEqual({ system: 'dms', role: 'RECORDS_OFFICER' });
     expect(parseRoleFilter('gms:super_host')).toEqual({ system: 'gms', role: 'super_host' });
+  });
+
+  it('accepts a role in an application managed from the console, and formats it back the same', () => {
+    expect(parseRoleFilter('app:retail-os:cashier')).toEqual({ system: 'app', client: 'retail-os', role: 'cashier' });
+    expect(parseRoleFilter('app:mos:lab.manager')).toEqual({ system: 'app', client: 'mos', role: 'lab.manager' });
+    for (const raw of ['idp:admin', 'dms:AUDITOR', 'gms:host', 'app:library:librarian']) {
+      expect(formatRoleFilter(parseRoleFilter(raw)!)).toBe(raw);
+    }
+  });
+
+  it('rejects a malformed application role', () => {
+    for (const bad of ['app:', 'app:x', 'app:retail-os', 'app:retail-os:', 'app::cashier', 'app:Retail OS:cashier', "app:shop:a'; DROP TABLE x;--", 'app:shop:' + 'a'.repeat(65)]) {
+      expect(parseRoleFilter(bad)).toBeNull();
+    }
   });
 
   it('rejects anything else, including attempts to smuggle SQL or an unknown system', () => {
@@ -64,6 +78,14 @@ describe('buildUserListFilter', () => {
     expect(f.where).toContain('idp_gms_role_mappings');
     // the group-mapping branch only applies when the user has NO per-user grant
     expect(f.where).toMatch(/NOT EXISTS \(SELECT 1 FROM idp_client_user_roles/);
+  });
+
+  it('a role in a managed application is the per-user grant for that application and role, bound as parameters', () => {
+    const f = buildUserListFilter({ ...base, role: { system: 'app', client: 'retail-os', role: 'cashier' } });
+    expect(f.where).toContain('idp_client_user_roles');
+    expect(f.where).not.toContain('idp_gms_role_mappings');
+    expect(f.params).toEqual(['retail-os', 'cashier']);
+    expect(f.where).not.toContain('retail-os');
   });
 
   it('a DMS role uses the group list DMS supplied; none means nobody (and is not a SQL error)', () => {

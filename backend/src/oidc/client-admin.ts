@@ -37,6 +37,12 @@ export const CLIENT_FACTS: Record<string, { pattern: string; rolesScope: string 
   },
 };
 
+/** What every application managed from the console has in common. */
+const MANAGED_APP_FACTS = {
+  pattern: 'OpenID Connect client. The application signs people in here (authorization code) and receives their roles in the app_roles claim. Who may open it, and as what, is set on each person’s page under Application roles.',
+  secretNote: 'The application keeps its own copy of this secret. After a rotation, put the new value in the application’s settings and restart it; until then signing in to it fails.',
+};
+
 export interface ClientUsage {
   activeGrants: number;
   activeRefreshTokens: number;
@@ -153,7 +159,17 @@ function toDetails(row: Row, usage: ClientUsage, entitledUsers: number | null): 
 
 /** Fill in the role catalog, which lives in its own table. */
 async function withRoles(details: ClientDetails): Promise<ClientDetails> {
-  return { ...details, roles: await clientCatalog(details.clientId), rolesEditable: catalogEditable(details.clientId) };
+  const roles = await clientCatalog(details.clientId);
+  const rolesEditable = catalogEditable(details.clientId);
+  // An application managed from the console (Retail OS, Library, MOS, any PRODUCT_CLIENTS_JSON entry, ...) has no entry in CLIENT_FACTS; describe it
+  // by how it is wired instead of leaving "Registered client." on its page.
+  const managed = rolesEditable && roles.length > 0 && !(details.clientId in CLIENT_FACTS);
+  return {
+    ...details,
+    roles,
+    rolesEditable,
+    ...(managed ? { pattern: MANAGED_APP_FACTS.pattern, rolesScope: 'app_roles', secretNote: MANAGED_APP_FACTS.secretNote } : {}),
+  };
 }
 
 const SELECT = `SELECT client_id, client_secret, name, is_active, scope, grant_types, redirect_uris, post_logout_redirect_uris,

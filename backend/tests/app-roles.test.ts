@@ -13,6 +13,9 @@ import { setGrantedRoles } from '../src/auth/client-user-roles.js';
 import { parseAppRolesInput } from '../src/admin/app-access.js';
 import { replaceClientCatalog } from '../src/admin/app-role-catalog.js';
 import { seedClientRoles } from '../src/oidc/client-roles-config.js';
+import { getClientDetails } from '../src/oidc/client-admin.js';
+import { IDP_CONFIG } from '../src/config.js';
+import { buildUserListFilter, parseRoleFilter } from '../src/admin/services/user-filters.js';
 
 // Needs the IdP's database (DATABASE_URL), like the other *-db tests. Everything it creates is prefixed "jest-approles" and removed again.
 const APP = 'jest-approles-shop';
@@ -167,5 +170,41 @@ describe('editing the catalog', () => {
     expect(await replaceClientCatalog(APP, [{ roleName: 'a' }, { roleName: 'a' }])).toMatchObject({ ok: false, status: 400 });
     expect(await replaceClientCatalog('gms', [{ roleName: 'x' }])).toMatchObject({ ok: false, status: 409, code: 'ERR-CATALOG-PROTECTED' });
     expect(await replaceClientCatalog('jest-approles-missing', [{ roleName: 'x' }])).toMatchObject({ ok: false, status: 404 });
+  });
+});
+
+describe('the console treats every managed application like DMS and GMS', () => {
+  it('lists the Users who hold a given role in an application, and only them', async () => {
+    const holder = await addUser('filter-holder');
+    const other = await addUser('filter-other');
+    await addUser('filter-none');
+    await setGrantedRoles(email('filter-holder'), APP, ['owner'], 'jest');
+    await setGrantedRoles(email('filter-other'), APP, ['manager'], 'jest');
+    const ids = async (role: string, extra: Record<string, string> = {}): Promise<string[]> => {
+      const f = buildUserListFilter({ adminGroup: 'CN=none', role: parseRoleFilter(role), q: 'jest-approles-filter', ...extra });
+      const { rows } = await pool.query<{ id: string }>(`SELECT u.id FROM idp_users u ${f.where}`, f.params);
+      return rows.map((r) => r.id).sort();
+    };
+    expect(await ids(`app:${APP}:owner`)).toEqual([holder]);
+    expect(await ids(`app:${APP}:manager`)).toEqual([other]);
+    expect(await ids(`app:${APP}:cashier`)).toEqual([]);
+    // "Can sign in to" for the same application is the same people.
+    expect(await ids('', { client: APP })).toEqual([holder, other].sort());
+  });
+
+  it('describes a managed application by how it is wired, and leaves the built-in systems own descriptions alone', async () => {
+    // The console lists only clients that are in the configured seed, so the two test clients are put there for this test.
+    const added = [APP, OTHER].map((id) => ({ client_id: id, name: id, redirect_uris: ['https://x.example.invalid/cb'], post_logout_redirect_uris: [] }));
+    IDP_CONFIG.clientSeed.push(...(added as never[]));
+    const entitled = async () => null;
+    const app = (await getClientDetails(APP, entitled))!;
+    expect(app.rolesScope).toBe('app_roles');
+    expect(app.pattern).toMatch(/app_roles claim/);
+    expect(app.secretNote).toMatch(/keeps its own copy/);
+    const unmanaged = (await getClientDetails(OTHER, async () => null))!;
+    expect(unmanaged.pattern).toBe('Registered client.');
+    IDP_CONFIG.clientSeed.splice(IDP_CONFIG.clientSeed.length - added.length, added.length);
+    const gms = await getClientDetails('gms', entitled);
+    if (gms) expect(gms.rolesScope).toBe('gms_roles');
   });
 });

@@ -86,6 +86,21 @@ describe('collectReadiness', () => {
     expect(r.checks.dmsRoleLookup?.detail).toContain('omit the DMS roles');
   });
 
+  it('reports every other registered application that has a health address, and an unreachable one is only degraded', async () => {
+    mockPeers.mockReturnValue([
+      { name: 'dms', label: 'DMS', state: 'ok', checkedAt: 'x', latencyMs: 5 },
+      { name: 'gms', label: 'GMS', state: 'ok', checkedAt: 'x', latencyMs: 5 },
+      { name: 'retail-os', label: 'Retail OS', state: 'ok', checkedAt: 'x', latencyMs: 4 },
+      { name: 'library', label: 'Library', state: 'down', checkedAt: 'x', latencyMs: null, detail: 'connection refused or reset' },
+    ]);
+    const r = await collectReadiness();
+    expect(r.checks['app:retail-os']?.state).toBe('ok');
+    expect(r.checks['app:library']).toEqual({ state: 'degraded', detail: 'connection refused or reset' });
+    expect(r.status).toBe('degraded');
+    expect(httpStatusFor(r)).toBe(200);
+    expect(publicView(r).checks['app:library']).toBe('degraded');
+  });
+
   it('is degraded when a stored authenticator secret cannot be decrypted', async () => {
     mockUndecryptable.mockReturnValue(2);
     const r = await collectReadiness();

@@ -8,6 +8,7 @@ A self-hosted identity provider (IdP) for a small platform of internal systems: 
 - **Admin console.** Users, groups, role mappings, per-user app access, client management, sign-in history and an audit log.
 - **App launcher portal.** Each user sees only the apps they are entitled to open.
 - **Two integration patterns.** A standard OIDC client (DMS), and a token bridge with a same-origin gateway for an app that has its own login (GMS) with no changes to that app.
+- **Any application.** Further applications (a shop, a library system, a manufacturing suite, anything that speaks OpenID Connect) are registered by configuration (`PRODUCT_CLIENTS_JSON`, MOS) and then managed from the same console as DMS and GMS: the roles each offers, who holds which role (no role means no access and no launcher tile), who can be filtered by those roles, sign-out that reaches the application, and its health on the System page.
 - **Security.** TOTP two-factor with replay protection, rate-limited sign-in with optional password lockout, a hash-chained audit log you can verify (`npm run audit:verify`), and single-use owner verification for the most sensitive operations.
 - **Platform licensing.** Signed licence tokens per system with expiry, grace, seat limits and an offline signing tool.
 - **Operations.** A supervisor that restarts a crashed or hung process, numbered SQL migrations (with down scripts), backups and a CI workflow.

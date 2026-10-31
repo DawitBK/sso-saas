@@ -475,6 +475,16 @@ export const IDP_CONFIG = {
       : []),
     ...PRODUCT_CLIENT_LIST.filter((c) => c.backchannel_logout_uri).map((c) => ({ client_id: c.client_id, uri: c.backchannel_logout_uri as string })),
   ] as Array<{ client_id: string; uri: string }>,
+  /**
+   * The applications whose reachability the System page shows, besides DMS and GMS: MOS (MOS_HEALTH_URL, when MOS_ENABLED=true) and every PRODUCT_CLIENTS_JSON
+   * entry that has a health_uri. `label` is the name the console shows. Empty when none is configured (ops/peers.ts).
+   */
+  appHealthTargets: [
+    ...(process.env.MOS_ENABLED === "true" && (process.env.MOS_HEALTH_URL ?? "").trim()
+      ? [{ client_id: "mos", label: "MOS", uri: (process.env.MOS_HEALTH_URL ?? "").trim() }]
+      : []),
+    ...PRODUCT_CLIENT_LIST.filter((c) => c.health_uri).map((c) => ({ client_id: c.client_id, label: c.name, uri: c.health_uri as string })),
+  ] as Array<{ client_id: string; label: string; uri: string }>,
   dmsInternalApiKey: process.env.DMS_INTERNAL_API_KEY ?? "",
   dmsDefaultTenant: process.env.DMS_DEFAULT_TENANT ?? "examplecorp",
 

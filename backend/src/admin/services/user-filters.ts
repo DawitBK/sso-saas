@@ -8,6 +8,7 @@
  *    it, OR the client has no entitlement rows at all (open to everyone). That is
  *    exactly the rule the portal launcher uses (portal/catalog.ts's entitled()),
  *    so this filter can never disagree with what the user actually sees;
+ *  - a role in any other application (Retail OS, Library, ...) is the per-user grant set on the person's page (idp_client_user_roles);
  *  - a GMS role is, in order of precedence, the user's own per-user grant
  *    (idp_client_user_roles) and otherwise the mapping of one of their groups
  *    (idp_gms_role_mappings), the same order auth/client-role-claims.ts resolves;
@@ -50,11 +51,21 @@ export function userOrderBy(sort: unknown, dir: unknown): string {
   return key === 'email' ? `u.email ${direction}` : `${column[key]} ${direction}${nulls}, u.email ASC`;
 }
 
-/** `idp:admin` | `dms:<ROLE>` | `gms:<role>`. */
+/** `idp:admin` | `dms:<ROLE>` | `gms:<role>` | `app:<client id>:<role>` (an application managed from the console). */
 export interface ParsedRoleFilter {
-  system: 'idp' | 'dms' | 'gms';
+  system: 'idp' | 'dms' | 'gms' | 'app';
   role: string;
+  /** The application's client id; present only when `system` is `app`. */
+  client?: string;
 }
+
+/** The text form of a role filter, the inverse of parseRoleFilter. */
+export function formatRoleFilter(f: ParsedRoleFilter): string {
+  return f.system === 'app' ? `app:${f.client}:${f.role}` : `${f.system}:${f.role}`;
+}
+
+const APP_CLIENT_RE = /^[a-z0-9][a-z0-9_-]{1,63}$/;
+const APP_ROLE_RE = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
 
 export function parseRoleFilter(raw: unknown): ParsedRoleFilter | null {
   if (typeof raw !== 'string' || !raw) return null;
@@ -62,6 +73,13 @@ export function parseRoleFilter(raw: unknown): ParsedRoleFilter | null {
   if (i < 1) return null;
   const system = raw.slice(0, i);
   const role = raw.slice(i + 1).trim();
+  if (system === 'app') {
+    const j = role.indexOf(':');
+    const client = role.slice(0, j);
+    const appRole = role.slice(j + 1);
+    if (j < 1 || !APP_CLIENT_RE.test(client) || !APP_ROLE_RE.test(appRole)) return null;
+    return { system: 'app', client, role: appRole };
+  }
   if (!role || role.length > 64 || !/^[A-Za-z0-9_]+$/.test(role)) return null;
   if (system === 'idp' || system === 'dms' || system === 'gms') return { system, role };
   return null;
@@ -125,6 +143,12 @@ export function buildUserListFilter(input: UserListFilterInput): UserListFilter 
   if (role) {
     if (role.system === 'idp') {
       clauses.push(`EXISTS (SELECT 1 FROM idp_user_groups ug WHERE ug.user_id = u.id AND ug.group_dn = ${add(input.adminGroup)})`);
+    } else if (role.system === 'app') {
+      // A role in an application managed from the console is a per-user grant, nothing else (auth/app-roles.ts).
+      clauses.push(
+        `EXISTS (SELECT 1 FROM idp_client_user_roles cr
+                  WHERE cr.email = lower(u.email) AND cr.client_id = ${add(role.client)} AND cr.role_name = ${add(role.role)})`,
+      );
     } else if (role.system === 'gms') {
       const r = add(role.role);
       clauses.push(

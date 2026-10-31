@@ -6,6 +6,7 @@ import { IDP_CONFIG } from '../../config.js';
 import { DmsInternalApiError, listDmsGroupsForRole } from '../dms-internal-client.js';
 import {
   buildUserListFilter,
+  formatRoleFilter,
   parseRoleFilter,
   USER_MFA_FILTERS,
   USER_SORTS,
@@ -58,6 +59,6 @@ export async function resolveUserListQuery(query: Record<string, unknown>, reque
     ok: true,
     filter,
     orderBy: userOrderBy(sort, dir),
-    view: { q, status, source, mfa, client, role: role ? `${role.system}:${role.role}` : '', sort, dir },
+    view: { q, status, source, mfa, client, role: role ? formatRoleFilter(role) : '', sort, dir },
   };
 }

@@ -17,6 +17,8 @@ interface Member {
 interface App {
   rp: string;
   label: string;
+  /** Access to this application is set per person, so a group entitlement has no effect on it. */
+  managed?: boolean;
 }
 interface GroupDetailData {
   dn: string;
@@ -163,12 +165,18 @@ function GroupDetailInner() {
         <p className="sub" style={{ margin: '0 0 4px' }}>
           Which apps this group&apos;s members can see and open from the portal.
         </p>
+        {data.apps.some((a) => a.managed) ? (
+          <p className="admin-hint" style={{ margin: '0 0 8px' }}>
+            Applications marked “per person” cannot be given to a group: open a person under Users and choose their role in each; no role means no access.
+          </p>
+        ) : null}
         <div className="admin-checks" style={{ flexWrap: 'wrap' }}>
           {data.apps.map((a) => (
-            <label key={a.rp}>
+            <label key={a.rp} title={a.managed ? 'Access to this application is set for each person, not for a group.' : undefined}>
               <input
                 type="checkbox"
-                checked={entitledApps.has(a.rp)}
+                disabled={a.managed}
+                checked={!a.managed && entitledApps.has(a.rp)}
                 onChange={(e) => {
                   const next = new Set(entitledApps);
                   if (e.target.checked) next.add(a.rp);
@@ -177,6 +185,7 @@ function GroupDetailInner() {
                 }}
               />
               {a.label}
+              {a.managed ? <span className="admin-hint"> (per person)</span> : null}
             </label>
           ))}
         </div>
