@@ -36,6 +36,18 @@ const nextConfig: NextConfig = {
           { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
         ],
       },
+      // What every other system reads to find the identity provider and its signing keys. They change rarely, so the edge keeps a
+      // copy: fresh for 5 minutes, then served stale (while it re-checks) and stale if the backend is unreachable. A stall on the
+      // network between the edge and the laptop then does not stop sign-in for the systems that only need these two documents.
+      ...["/.well-known/:path*", "/jwks"].map((source) => ({
+        source,
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, s-maxage=300, stale-while-revalidate=86400, stale-if-error=86400",
+          },
+        ],
+      })),
     ];
   },
   // Same-origin reverse proxy to the SSO backend — mirrors what the current
